@@ -5,6 +5,8 @@
 */
 
 #include <WiFi.h>
+#include <JSON.h>
+#include <Arduino_Json.h>
 #include <WebSocketsClient.h>
 
 #define LED 1
@@ -18,6 +20,9 @@
 WiFiClient client;
 WebSocketsClient webSocket;
 
+int counter = 0;
+JSONVar uuidJSONCombination;
+
 void setup() {
 	// Set the LED Pin to be an output
 	pinMode(LED, OUTPUT);
@@ -29,18 +34,18 @@ void setup() {
 	// Start connecting to a WiFi network
 	Serial.println();
 	Serial.println();
-	Serial.print("[WIFI] Connecting to ");
-	Serial.print(WIFI_SSID);
+	//Serial.print("[WIFI] Connecting to ");
+	//Serial.print(WIFI_SSID);
 
 	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 	while (WiFi.status() != WL_CONNECTED) {
 		delay(500);
-		Serial.print(".");
+		//Serial.print(".");
 	}
 
 	Serial.println("");
 	Serial.println("[WIFI] Connected");
-	Serial.print("[WIFI] IP address: ");
+	//Serial.print("[WIFI] IP address: ");
 	Serial.println(WiFi.localIP());
 	Serial.println("");
 
@@ -55,11 +60,22 @@ void setup() {
 }
 
 void loop() {
+	Serial.println("Loop1");
 	webSocket.loop();
+
+	if (webSocket.isConnected() && counter == 0)
+	{
+		Serial.println("Loop2");
+		counter = 1;
+		Serial.println("Sending Request");
+		String uuid = StringUUIDGen();
+		uuidJSONCombination[0]["uuid"] = uuid;
+		webSocket.sendTXT("{\"message-id\":\"" + uuid + "\",\"request-type\":\"GetStreamingStatus\"}");
+	}
+	Serial.println("Loop3");
 }
 
 void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
-
 	switch (type) {
 	case WStype_DISCONNECTED:
 		Serial.println("[WebS] Disconnected!");
@@ -67,21 +83,53 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
 
 	case WStype_CONNECTED:
 		Serial.printf("[WebS] Connected to URL: %s\n", payload);
-		webSocket.sendTXT("{\"message-id\":\"" + StringUUIDGen() + "\",\"request-type\":\"GetStreamingStatus\"}");
 		break;
 
 	case WStype_TEXT:
-		Serial.printf("[WebS] Got text: %s\n", payload);
+	{
+		//Serial.printf("[WebS] Got text: %s\n", payload);
+		JSONVar json = JSON.parse((char*)payload);
+		Serial.println((const char*)payload);
+
+		if (strcmp(uuidJSONCombination[0]["uuid"], json["message-id"]) == 0)
+		{
+			if (strcmp(json["status"], "ok") != 0)
+			{
+				Serial.print("Status was revived as ERROR");
+				break;
+			}
+			if (json["streaming"] || json["recording-paused"])
+			{
+				Serial.println("She is live!");
+				digitalWrite(LED, LOW);
+				Serial.println("DEBUG 1");
+			}
+			else
+			{
+				Serial.println("She is not live!");
+				digitalWrite(LED, HIGH);
+				Serial.println("DEBUG 2");
+			}
+		}
+		else
+		{
+			Serial.println("UUIDs not equal!");
+		}
+		Serial.println("DEBUG 3");
 		break;
+	}
 
 	case WStype_ERROR:
+		Serial.printf("[WebS] Error: %s\n", payload);
 	case WStype_FRAGMENT_TEXT_START:
 	case WStype_FRAGMENT_BIN_START:
 	case WStype_FRAGMENT:
 	case WStype_FRAGMENT_FIN:
 		break;
+	default:
+		Serial.printf("[WebS] Default: %s\n", payload);
+		break;
 	}
-
 }
 
 
