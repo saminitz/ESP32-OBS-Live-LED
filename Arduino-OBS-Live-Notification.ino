@@ -6,7 +6,6 @@
 
 #include <WiFi.h>
 #include <JSON.h>
-#include <Arduino_Json.h>
 #include <WebSocketsClient.h>
 
 #define LED 1
@@ -20,16 +19,16 @@
 WiFiClient client;
 WebSocketsClient webSocket;
 
-int counter = 0;
 JSONVar uuidJSONCombination;
 
 void setup() {
 	// Set the LED Pin to be an output
 	pinMode(LED, OUTPUT);
+	digitalWrite(LED, HIGH);
 
 	// Start Serial Connection
-	Serial.begin(115200);
-	delay(1000);
+	//Serial.begin(115200);
+	//delay(1000);
 
 	// Start connecting to a WiFi network
 	Serial.println();
@@ -57,22 +56,23 @@ void setup() {
 
 	// Try ever 5000 again if connection has failed
 	webSocket.setReconnectInterval(5000);
+
+	while (!webSocket.isConnected())
+	{
+		Serial.println("[WebS] Still not connected");
+		webSocket.loop();
+		delay(500);
+	}
+
+	Serial.println("Sending Request");
+	String uuid = StringUUIDGen();
+	uuidJSONCombination[0]["uuid"] = uuid;
+	webSocket.sendTXT("{\"message-id\":\"" + uuid + "\",\"request-type\":\"GetStreamingStatus\"}");
 }
 
 void loop() {
-	Serial.println("Loop1");
 	webSocket.loop();
-
-	if (webSocket.isConnected() && counter == 0)
-	{
-		Serial.println("Loop2");
-		counter = 1;
-		Serial.println("Sending Request");
-		String uuid = StringUUIDGen();
-		uuidJSONCombination[0]["uuid"] = uuid;
-		webSocket.sendTXT("{\"message-id\":\"" + uuid + "\",\"request-type\":\"GetStreamingStatus\"}");
-	}
-	Serial.println("Loop3");
+	delay(500);
 }
 
 void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
@@ -82,52 +82,84 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
 		break;
 
 	case WStype_CONNECTED:
-		Serial.printf("[WebS] Connected to URL: %s\n", payload);
+		Serial.printf("[WebS] Connected to URL: %s\r\n", payload);
 		break;
 
 	case WStype_TEXT:
 	{
-		//Serial.printf("[WebS] Got text: %s\n", payload);
+		//Serial.printf("[WebS] Got text: %s\r\n", payload);
 		JSONVar json = JSON.parse((char*)payload);
 		Serial.println((const char*)payload);
 
-		if (strcmp(uuidJSONCombination[0]["uuid"], json["message-id"]) == 0)
+
+		if (json.hasOwnProperty("message-id"))
 		{
-			if (strcmp(json["status"], "ok") != 0)
-			{
-				Serial.print("Status was revived as ERROR");
-				break;
-			}
-			if (json["streaming"] || json["recording-paused"])
-			{
-				Serial.println("She is live!");
-				digitalWrite(LED, LOW);
-				Serial.println("DEBUG 1");
+			if (strcmp(uuidJSONCombination[0]["uuid"], json["message-id"]) == 0) {
+				if (strcmp(json["status"], "ok") != 0)
+				{
+					Serial.print("[WebS] Status was revived as ERROR");
+					break;
+				}
+				if (json["streaming"] || json["recording"])
+				{
+					Serial.println("[WebS] Status: live!");
+					digitalWrite(LED, LOW);
+				}
+				else
+				{
+					Serial.println("[WebS] Status: not live!");
+					digitalWrite(LED, HIGH);
+				}
 			}
 			else
 			{
-				Serial.println("She is not live!");
+				Serial.println("UUIDs not equal!");
+			}
+		}
+		else if (json.hasOwnProperty("update-type"))
+		{
+			String updateType = (const char*)json["update-type"];
+
+			if (updateType == "StreamStarting" || updateType == "StreamStarted" || updateType == "RecordingStarting" || updateType == "RecordingStarted" || updateType == "RecordingResumed")
+			{
+				Serial.println("[WebS] Event: live!");
+				digitalWrite(LED, LOW);
+			}
+			else if (updateType == "StreamStopping" || updateType == "StreamStopped" || updateType == "RecordingStopping" || updateType == "RecordingStopped" || updateType == "RecordingPaused")
+			{
+				Serial.println("[WebS] Event: not live!");
 				digitalWrite(LED, HIGH);
-				Serial.println("DEBUG 2");
+			}
+			else if (updateType == "StreamStatus")
+			{
+				if (json.hasOwnProperty("streaming") && json.hasOwnProperty("recording"))
+				{
+					if (json["streaming"] || json["recording"])
+					{
+						Serial.println("[WebS] StreamStatus: live!");
+						digitalWrite(LED, LOW);
+					}
+					else
+					{
+						Serial.println("[WebS] StreamStatus: not live!");
+						digitalWrite(LED, HIGH);
+					}
+				}
 			}
 		}
 		else
 		{
-			Serial.println("UUIDs not equal!");
+			Serial.println("Not known json response");
 		}
-		Serial.println("DEBUG 3");
 		break;
 	}
 
 	case WStype_ERROR:
-		Serial.printf("[WebS] Error: %s\n", payload);
+		Serial.printf("[WebS] Error: %s\r\n", payload);
 	case WStype_FRAGMENT_TEXT_START:
 	case WStype_FRAGMENT_BIN_START:
 	case WStype_FRAGMENT:
 	case WStype_FRAGMENT_FIN:
-		break;
-	default:
-		Serial.printf("[WebS] Default: %s\n", payload);
 		break;
 	}
 }
