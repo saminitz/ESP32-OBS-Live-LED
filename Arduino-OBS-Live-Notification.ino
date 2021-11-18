@@ -19,6 +19,7 @@
 WiFiClient client;
 WebSocketsClient webSocket;
 
+bool sendRequest = true;
 JSONVar uuidJSONCombination;
 
 void setup() {
@@ -55,30 +56,30 @@ void setup() {
 	webSocket.onEvent(webSocketEvent);
 
 	// Try ever 5000 again if connection has failed
-	webSocket.setReconnectInterval(5000);
-
-	while (!webSocket.isConnected())
-	{
-		Serial.println("[WebS] Still not connected");
-		webSocket.loop();
-		delay(500);
-	}
-
-	Serial.println("Sending Request");
-	String uuid = StringUUIDGen();
-	uuidJSONCombination[0]["uuid"] = uuid;
-	webSocket.sendTXT("{\"message-id\":\"" + uuid + "\",\"request-type\":\"GetStreamingStatus\"}");
+	//webSocket.setReconnectInterval(5000);
 }
 
 void loop() {
 	webSocket.loop();
-	delay(500);
+
+	if (webSocket.isConnected() && sendRequest)
+	{
+		sendRequest = false;
+		Serial.println("Sending Request");
+		String uuid = StringUUIDGen();
+		uuidJSONCombination[0]["uuid"] = uuid;
+		webSocket.sendTXT("{\"message-id\":\"" + uuid + "\",\"request-type\":\"GetStreamingStatus\"}");
+	}
+
+	delay(100);
 }
 
 void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
 	switch (type) {
 	case WStype_DISCONNECTED:
 		Serial.println("[WebS] Disconnected!");
+		sendRequest = true;
+		digitalWrite(LED, HIGH);
 		break;
 
 	case WStype_CONNECTED:
@@ -145,6 +146,13 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
 						digitalWrite(LED, HIGH);
 					}
 				}
+			}
+			else if (updateType == "Exiting")
+			{
+				Serial.println("[WebS] OBS is closing... Disconnecting");
+				digitalWrite(LED, HIGH);
+				webSocket.disconnect();
+				sendRequest = true;
 			}
 		}
 		else
