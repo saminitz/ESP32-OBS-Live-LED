@@ -6,7 +6,10 @@
 
 #include <WiFi.h>
 #include <JSON.h>
+#include <SPIFFS.h>
+#include <ESP-UUID.h>
 #include <WebSocketsClient.h>
+#include <ESPAsyncWebServer.h>
 
 #define LED 1
 #define WIFI_SSID "Fingerweg"
@@ -22,6 +25,9 @@ WebSocketsClient webSocket;
 bool sendRequest = true;
 JSONVar uuidJSONCombination;
 
+// Create AsyncWebServer object on port 80
+AsyncWebServer server(80);
+
 void setup() {
 	// Set the LED Pin to be an output
 	pinMode(LED, OUTPUT);
@@ -31,12 +37,19 @@ void setup() {
 	//Serial.begin(115200);
 	//delay(1000);
 
+	// Initialize SPIFFS
+	if (!SPIFFS.begin(true)) {
+		Serial.println("An Error has occurred while mounting SPIFFS");
+		return;
+	}
+
 	// Start connecting to a WiFi network
 	Serial.println();
 	Serial.println();
 	//Serial.print("[WIFI] Connecting to ");
 	//Serial.print(WIFI_SSID);
 
+	WiFi.setHostname("ESP32-Twitch-LED-Board");
 	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 	while (WiFi.status() != WL_CONNECTED) {
 		delay(500);
@@ -48,6 +61,28 @@ void setup() {
 	//Serial.print("[WIFI] IP address: ");
 	Serial.println(WiFi.localIP());
 	Serial.println("");
+
+	// Route for root / web page
+	server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/index.html", String(), false); });
+	// Route for root / web page
+	server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/style.css", "text/css"); });
+	// Route to load style.css file
+	server.on("/Twtich-Settings.svg", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/Twtich-Settings.svg", "image/svg+xml"); });
+	// Route to load style.css file
+	server.on("/Twtich-Logo.svg", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/Twtich-Logo.svg", "image/svg+xml"); });
+	// Route to load style.css file
+	server.on("/bootstrap.min.css", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/bootstrap.min.css", "text/css"); });
+	// Route to load jquery.js file
+	server.on("/coloris.css", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/coloris.css", "text/css"); });
+	// Route to load jquery.js file
+	server.on("/jquery-1.10.2.min.js", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/jquery-1.10.2.min.js", "text/javascript"); });
+	// Route to load jquery.js file
+	server.on("/bootstrap.bundle.min.js", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/bootstrap.bundle.min.js", "text/javascript"); });
+	// Route to load jquery.js file
+	server.on("/coloris.js", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/coloris.js", "text/javascript"); });
+
+	// Start server
+	server.begin();
 
 	// Server address, port and URL
 	webSocket.begin(WEBSOCKET_IP_ADDRESS, WEBSOCKET_PORT, "/");
@@ -171,69 +206,3 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
 		break;
 	}
 }
-
-
-// I'm having difficulties including external files so I will copy the file directly
-// Repository: https://github.com/furrysalamander/esp-uuid
-// Library for generating a UUID4 on ESP32
-// Mike Abbott - 2019
-// MIT License
-
-#ifndef UUID_GEN
-#define UUID_GEN
-// For a 32 bit int, returnVar must be of length 8 or greater.
-void IntToHex(const unsigned int inInt, char* returnVar)
-{
-	const char* HEXMAP = "0123456789abcdef";
-	for (int i = 0; i < 8; i++)
-	{
-		// Shift each hex digit to the right, and then map it to its corresponding value
-		returnVar[7 - i] = HEXMAP[(inInt >> (i * 4)) & 0b1111];
-	}
-}
-
-// returnUUID must be of length 37 or greater
-// (For the null terminator)
-void UUIDGen(char* returnUUID)
-{
-	for (int i = 0; i < 4; i++)
-	{
-		unsigned int chunk = esp_random();
-		// UUID4 requires a few bits to be specific values.
-		if (i == 1)
-		{
-			chunk &= 0xFFFF0FFF;
-			chunk |= 0x00004000;
-		}
-		if (i == 2)
-		{
-			chunk &= 0b00111111111111111111111111111111;
-			chunk |= 0b10000000000000000000000000000000;
-		}
-		char chunkChars[8];
-		IntToHex(chunk, chunkChars);
-		for (int p = 0; p < 8; p++)
-		{
-			returnUUID[p + 8 * i] = chunkChars[p];
-		}
-	}
-	int dashOffset = 4;
-	const int UUID_NUM_DIGITS = 32;
-	for (int i = UUID_NUM_DIGITS - 1; i >= 0; i--)
-	{
-		if (i == 7 || i == 11 || i == 15 || i == 19) // location of dashes
-		{
-			returnUUID[i + dashOffset--] = '-';
-		}
-		returnUUID[i + dashOffset] = returnUUID[i];
-	}
-	returnUUID[36] = 0;
-}
-
-String StringUUIDGen()
-{
-	char returnUUID[37];
-	UUIDGen(returnUUID);
-	return String(returnUUID);
-}
-#endif

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <!--  This file has been downloaded from bootdey.com @bootdey on twitter -->
+    <!--  All snippets are MIT license http://bootdey.com/license -->
+    <title>Twtich LED Board</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/svg+xml" href="Twtich-Settings.svg">
+    <link href="bootstrap.min.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+    <link href="coloris.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-10 col-xl-8 mx-auto">
+                <div class="header-container">
+                    <img class="pull-left twtich-logo" src="Twtich-Logo.svg" />
+                    <h2 class="h3 mb-4 page-title">Twitch LED Board</h2>
+                </div>
+                <div class="my-4">
+                    <h5 class="mb-0 mt-5">Einstellungen</h5>
+                    <p>Hier findest du alle Einstellungen zu deinem Twitch LED Board.</p>
+                    <hr class="my-4" />
+                    <strong class="mb-0">Farben</strong>
+                    <p>Wähle deine persönliche Farbe für die verschiedenen Modi.</p>
+                    <div class="list-group mb-5 shadow">
+                        <div class="list-group-item">
+                            <div class="row align-items-center">
+                                <div class="col">
+                                    <strong class="mb-0">Streamen</strong>
+                                    <p class="text-muted mb-0">Diese Farbe wird angezeigt, wenn du live bist.</p>
+                                </div>
+                                <div class="col-auto full">
+                                    <input type="text" class="coloris full" data-coloris value="#9146FF" id="streamingColor">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="list-group-item">
+                            <div class="row align-items-center">
+                                <div class="col">
+                                    <strong class="mb-0">Aufnehmen</strong>
+                                    <p class="text-muted mb-0">Diese Farbe wird angezeigt, wenn du am aufnehmen bist.</p>
+                                </div>
+                                <div class="col-auto full">
+                                    <input type="text" class="coloris full" data-coloris value="#ff0000" id="recordingColor">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="list-group-item">
+                            <div class="row align-items-center">
+                                <div class="col">
+                                    <strong class="mb-0">Unauthorized financial activity</strong>
+                                    <p class="text-muted mb-0">Fusce lacinia elementum eros, sed vulputate urna eleifend nec.</p>
+                                </div>
+                                <div class="col-auto">
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="alert2" />
+                                        <label class="custom-control-label" for="alert2"></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <hr class="my-4" />
+                    <strong class="mb-0">Allgemein</strong>
+                    <p>Alle sonstigen Einstellungen findest du hier :)</p>
+                    <div class="list-group mb-5 shadow">
+                        <div class="list-group-item">
+                            <div class="row align-items-center">
+                                <div class="col">
+                                    <strong class="mb-0">Notify me about new features and updates</strong>
+                                    <p class="text-muted mb-0">Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                                </div>
+                                <div class="col-auto">
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="alert3" checked="" />
+                                        <label class="custom-control-label" for="alert3"></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="list-group-item">
+                            <div class="row align-items-center">
+                                <div class="col">
+                                    <strong class="mb-0">Notify me by email for latest news</strong>
+                                    <p class="text-muted mb-0">Nulla et tincidunt sapien. Sed eleifend volutpat elementum.</p>
+                                </div>
+                                <div class="col-auto">
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="alert4" checked="" />
+                                        <label class="custom-control-label" for="alert4"></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="list-group-item">
+                            <div class="row align-items-center">
+                                <div class="col">
+                                    <strong class="mb-0">Notify me about tips on using account</strong>
+                                    <p class="text-muted mb-0">Donec in quam sed urna bibendum tincidunt quis mollis mauris.</p>
+                                </div>
+                                <div class="col-auto">
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="alert5" />
+                                        <label class="custom-control-label"></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="jquery-1.10.2.min.js"></script>
+    <script src="bootstrap.bundle.min.js"></script>
+    <script src="coloris.js"></script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="512"
+   height="512"
+   viewBox="0 0 135.46666 135.46667"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.1.1 (3bf5ae0d25, 2021-09-20)"
+   sodipodi:docname="Twtich Settings2.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:document-units="mm"
+     showgrid="false"
+     units="px"
+     width="512px"
+     inkscape:zoom="1.5554293"
+     inkscape:cx="284.48738"
+     inkscape:cy="263.27137"
+     inkscape:window-width="3440"
+     inkscape:window-height="1369"
+     inkscape:window-x="-8"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer2" />
+  <defs
+     id="defs2" />
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="Ebene 2"
+     style="display:inline;mix-blend-mode:normal">
+    <rect
+       style="fill:#ffffff;stroke-width:0.302424"
+       id="rect692"
+       width="93.510139"
+       height="79.035141"
+       x="26.74062"
+       y="14.478856" />
+    <rect
+       style="fill:#ffffff;stroke-width:0.264583"
+       id="rect1064"
+       width="19.451952"
+       height="19.477058"
+       x="49.29789"
+       y="92.78376" />
+  </g>
+  <g
+     inkscape:label="Ebene 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     style="opacity:1;mix-blend-mode:normal">
+    <g
+       id="g1939"
+       transform="matrix(0.03686927,0,0,-0.03566008,-185.52966,458.33734)">
+      <g
+         id="g136">
+        <path
+           d="m 5341.3408,12852.953 -309.246,-730.844 V 9551.362 h 936.6372 v -497.2409 h 512.8145 l 508.3648,497.2409 h 708.5961 l 1007.8306,998.932 v 2302.659 z m 2952.2983,-2102.428 -495.0161,-499.466 h -927.738 l -501.6905,-478.3302 v 478.3302 h -611.8177 v 2195.87 h 2536.2623 z"
+           id="path18"
+           sodipodi:nodetypes="cccccccccccccccccccc"
+           style="fill:#5e2a88;fill-opacity:1;stroke-width:1.1124" />
+        <path
+           d="m 7181.2434,10850.641 h 511.702 v 995.594 h -511.702 z m -812.0489,0 h 511.7024 v 995.594 h -511.7024 z"
+           id="path22"
+           sodipodi:nodetypes="cccccccccc"
+           style="fill:#5e2a88;fill-opacity:1;stroke-width:1.1124" />
+      </g>
+    </g>
+    <g
+       style="fill:#ffffff;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"
+       id="g59"
+       transform="matrix(2.9007314,0,0,2.9007314,65.849113,71.650576)">
+      <line
+         x1="4"
+         y1="21"
+         x2="4"
+         y2="14"
+         id="line26"
+         style="fill:#ececec;stroke:#ffffff" />
+      <line
+         x1="4"
+         y1="10"
+         x2="4"
+         y2="3"
+         id="line28"
+         style="fill:#ececec;stroke:#ffffff" />
+      <line
+         x1="12"
+         y1="21"
+         x2="12"
+         y2="12"
+         id="line30"
+         style="fill:#ececec;stroke:#ffffff" />
+      <line
+         x1="12"
+         y1="8"
+         x2="12"
+         y2="3"
+         id="line32"
+         style="fill:#ececec;stroke:#ffffff" />
+      <line
+         x1="20"
+         y1="21"
+         x2="20"
+         y2="16"
+         id="line34"
+         style="fill:#ececec;stroke:#ffffff" />
+      <line
+         x1="20"
+         y1="12"
+         x2="20"
+         y2="3"
+         id="line36"
+         style="fill:#ececec;stroke:#ffffff" />
+      <line
+         x1="1"
+         y1="14"
+         x2="7"
+         y2="14"
+         id="line38"
+         style="fill:#ececec;stroke:#ffffff" />
+      <line
+         x1="9"
+         y1="8"
+         x2="15"
+         y2="8"
+         id="line40"
+         style="fill:#ffffff;stroke:#ffffff" />
+      <line
+         x1="17"
+         y1="16"
+         x2="23"
+         y2="16"
+         id="line42"
+         style="fill:#ececec;stroke:#ffffff" />
+    </g>
+  </g>
+</svg>
