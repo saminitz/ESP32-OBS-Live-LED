@@ -2,14 +2,13 @@
 <html lang="de">
 <head>
     <meta charset="utf-8">
-    <!--  This file has been downloaded from bootdey.com @bootdey on twitter -->
-    <!--  All snippets are MIT license http://bootdey.com/license -->
     <title>Twtich LED Schild</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/svg+xml" href="Twtich-Settings.svg">
-    <link href="bootstrap.min.css" rel="stylesheet">
-    <link href="style.css" rel="stylesheet">
-    <link href="coloris.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.1/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="coloris.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
@@ -33,7 +32,7 @@
                                     <p class="text-muted mb-0">Diese Farbe wird angezeigt, wenn du live bist.</p>
                                 </div>
                                 <div class="col-auto full">
-                                    <input type="text" class="coloris full" data-coloris value="#9146FF" id="streamingColor">
+                                    <input type="text" class="coloris full" data-coloris id="streamingColor">
                                 </div>
                             </div>
                         </div>
@@ -44,37 +43,39 @@
                                     <p class="text-muted mb-0">Diese Farbe wird angezeigt, wenn du am aufnehmen bist.</p>
                                 </div>
                                 <div class="col-auto full">
-                                    <input type="text" class="coloris full" data-coloris value="#ff0000" id="recordingColor">
+                                    <input type="text" class="coloris full" data-coloris id="recordingColor">
                                 </div>
                             </div>
                         </div>
-                        <!--<div class="list-group-item">
+                        <div class="list-group-item">
                             <div class="row align-items-center">
                                 <div class="col">
                                     <strong class="mb-0">Helligkeit</strong>
                                     <p class="text-muted mb-0">Mit diesem Slider kannst du die insgesamte Helligkeit anpassen</p>
                                 </div>
                                 <div class="col-auto">
-                                    <label for="customRange1">Example range</label>
-                                    <input type="range" class="custom-range" id="brightnessSlider">
+                                    <label for="brightnessRange">Aktuelle Helligkeit: 0</label>
+                                    <input type="range" class="custom-range" id="brightnessRange" value="0">
                                 </div>
                             </div>
-                        </div>-->
+                        </div>
                     </div>
                     <hr class="my-4" />
-                    <strong class="mb-0">Allgemein</strong>
-                    <p>Alle sonstigen Einstellungen findest du hier :)</p>
+                    <strong class="mb-0">Zeiten</strong>
+                    <p>
+                        Wähle die Zeiten, zu denen das Schild an oder trotz laufendem Livestream, aus sein soll.<br>
+                        (Damit Mama & Papa nicht mitbekommen das du bis in die Puppen streamst. 😜)
+                    </p>
                     <div class="list-group mb-5 shadow">
                         <div class="list-group-item">
                             <div class="row align-items-center">
                                 <div class="col">
-                                    <strong class="mb-0">Notify me about new features and updates</strong>
-                                    <p class="text-muted mb-0">Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                                    <strong class="mb-0">Uhrzeit</strong>
+                                    <p class="text-muted mb-0">Ab diesem Zeitpunkt werden die LEDs ausgeschaltet.</p>
                                 </div>
                                 <div class="col-auto">
-                                    <div class="custom-control custom-switch">
-                                        <input type="checkbox" class="custom-control-input" id="alert3" checked="" />
-                                        <label class="custom-control-label" for="alert3"></label>
+                                    <div class="timepicker-ui">
+                                        <input type="text" class="timepicker-ui-input" value="12:00 AM" />
                                     </div>
                                 </div>
                             </div>
@@ -112,9 +113,10 @@
             </div>
         </div>
     </div>
-    <script src="jquery-1.10.2.min.js"></script>
-    <script src="bootstrap.bundle.min.js"></script>
-    <script src="coloris.js"></script>
-    <script src="index.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.1/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="coloris.js"></script>
+    <script type="module" src="timepicker-ui.js"></script>
+    <script type="module" src="index.js"></script>
 </body>
 </html>

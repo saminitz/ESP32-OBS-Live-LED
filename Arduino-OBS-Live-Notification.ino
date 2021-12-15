@@ -4,14 +4,17 @@
  Author:	Samuel Nitzsche
 */
 
+#include <string>
 #include <WiFi.h>
-#include <JSON.h>
 #include <SPIFFS.h>
 #include <ESP-UUID.h>
+#include <Arduino_JSON.h>
+#include <Adafruit_NeoPixel.h>
 #include <WebSocketsClient.h>
 #include <ESPAsyncWebServer.h>
 
-#define LED 1
+#define PIN_LED 4
+#define NUM_LEDS 287
 #define WIFI_SSID "Fingerweg"
 #define WIFI_PASSWORD "fff222ccc1234"
 
@@ -27,13 +30,14 @@ WebSocketsClient webSocket;
 AsyncWebServer server(80);
 JSONVar allSettings;
 
+Adafruit_NeoPixel pixels(NUM_LEDS, PIN_LED, NEO_GRB + NEO_KHZ800);
+
 bool sendRequest = true;
 String obsUuidResponse;
 
 void setup() {
-	// Set the LED Pin to be an output
-	pinMode(LED, OUTPUT);
-	digitalWrite(LED, HIGH);
+	pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
+	ledOff();
 
 	// Start Serial Connection
 	Serial.begin(115200);
@@ -64,6 +68,9 @@ void setup() {
 	Serial.println(WiFi.localIP());
 	Serial.println("");
 
+	loadAllSettings();
+
+
 	// Route for root / web page
 	server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
 		request->send(SPIFFS, "/index.html", String(), false);
@@ -76,22 +83,22 @@ void setup() {
 		response->print(json);
 		request->send(response);
 		});
-	server.on("/postSettings", HTTP_POST, [](AsyncWebServerRequest* request) {}, NULL, 
+	server.on("/postSettings", HTTP_POST, [](AsyncWebServerRequest* request) {}, NULL,
 		[](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
-		// The following print statements work + removing them makes no difference
-		// This is displayed on monitor "Content type::application/x-www-form-urlencoded"
-		String postContent = "";
-		for (size_t i = 0; i < len; i++)
-		{
-			postContent += (char)data[i];
-		}
-		Serial.print("[WebsiteUI] Einstellungen werden gespeichert: ");
-		Serial.println(postContent);
-		File file = SPIFFS.open("/settings.json", "w+");
-		file.print(postContent);
-		file.close();
-		allSettings = JSON.parse(postContent);
-		request->send(200);
+			// The following print statements work + removing them makes no difference
+			// This is displayed on monitor "Content type::application/x-www-form-urlencoded"
+			String postContent = "";
+			for (size_t i = 0; i < len; i++)
+			{
+				postContent += (char)data[i];
+			}
+			Serial.print("[WebsiteUI] Einstellungen werden gespeichert: ");
+			Serial.println(postContent);
+			File file = SPIFFS.open("/settings.json", "w+");
+			file.print(postContent);
+			file.close();
+			allSettings = JSON.parse(postContent);
+			request->send(200);
 		});
 
 	// Route to load style CSS file
@@ -100,14 +107,11 @@ void setup() {
 	server.on("/Twtich-Settings.svg", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/Twtich-Settings.svg", "image/svg+xml"); });
 	// Route to load Twitch-Logo SVG file
 	server.on("/Twtich-Logo.svg", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/Twtich-Logo.svg", "image/svg+xml"); });
-	// Route to load bootstrap CSS file
-	server.on("/bootstrap.min.css", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/bootstrap.min.css", "text/css"); });
 	// Route to load coloris CSS file
 	server.on("/coloris.css", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/coloris.css", "text/css"); });
-	// Route to load jquery javascript file
-	server.on("/jquery-1.10.2.min.js", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/jquery-1.10.2.min.js", "text/javascript"); });
-	// Route to load bootstrap javascript file
-	server.on("/bootstrap.bundle.min.js", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/bootstrap.bundle.min.js", "text/javascript"); });
+
+	// Route to load timepicker javascript
+	server.on("/timepicker-ui.js", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/timepicker-ui.js", "text/javascript"); });
 	// Route to load coloris javascript
 	server.on("/coloris.js", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/coloris.js", "text/javascript"); });
 	// Route to load index javascript file
@@ -141,12 +145,55 @@ void loop() {
 	delay(100);
 }
 
+uint32_t hexToUInt32(String hexColor)
+{
+	if (hexColor[0] == '#') {
+		hexColor = hexColor.substring(1);
+	}
+
+	while (hexColor.length() != 6) {
+		hexColor += "0";
+	}
+
+	int r = strtol(hexColor.substring(0, 2).c_str(), NULL, 16);
+	int g = strtol(hexColor.substring(2, 4).c_str(), NULL, 16);
+	int b = strtol(hexColor.substring(4, 6).c_str(), NULL, 16);
+	return pixels.Color(r, g, b);
+}
+
+void loadAllSettings()
+{
+	File file = SPIFFS.open("/settings.json", "r");
+	String json = file.readString();
+	allSettings = JSON.parse(json);
+}
+
+void ledOn()
+{
+	for (size_t i = 0; i < NUM_LEDS; i++)
+	{
+		pixels.setPixelColor(i, hexToUInt32((const char*)allSettings["streamingColor"]));
+	}
+	pixels.show();
+}
+
+void ledOff()
+{
+	pixels.clear();
+	pixels.show();
+}
+
+void ledSetBrightness(int value)
+{
+	pixels.setBrightness(value % 100);
+}
+
 void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
 	switch (type) {
 	case WStype_DISCONNECTED:
 		Serial.println("[WebSocket] Disconnected!");
 		sendRequest = true;
-		digitalWrite(LED, HIGH);
+		ledOff();
 		break;
 
 	case WStype_CONNECTED:
@@ -171,12 +218,12 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
 				if (json["streaming"] || json["recording"])
 				{
 					Serial.println("[WebSocket] Status: live!");
-					digitalWrite(LED, LOW);
+					ledOn();
 				}
 				else
 				{
 					Serial.println("[WebSocket] Status: not live!");
-					digitalWrite(LED, HIGH);
+					ledOff();
 				}
 			}
 			else
@@ -191,12 +238,12 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
 			if (updateType == "StreamStarting" || updateType == "StreamStarted" || updateType == "RecordingStarting" || updateType == "RecordingStarted" || updateType == "RecordingResumed")
 			{
 				Serial.println("[WebSocket] Event: live!");
-				digitalWrite(LED, LOW);
+				ledOn();
 			}
 			else if (updateType == "StreamStopping" || updateType == "StreamStopped" || updateType == "RecordingStopping" || updateType == "RecordingStopped" || updateType == "RecordingPaused")
 			{
 				Serial.println("[WebSocket] Event: not live!");
-				digitalWrite(LED, HIGH);
+				ledOff();
 			}
 			else if (updateType == "StreamStatus")
 			{
@@ -205,19 +252,19 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
 					if (json["streaming"] || json["recording"])
 					{
 						Serial.println("[WebSocket] StreamStatus: live!");
-						digitalWrite(LED, LOW);
+						ledOn();
 					}
 					else
 					{
 						Serial.println("[WebSocket] StreamStatus: not live!");
-						digitalWrite(LED, HIGH);
+						ledOff();
 					}
 				}
 			}
 			else if (updateType == "Exiting")
 			{
 				Serial.println("[WebSocket] OBS is closing... Disconnecting");
-				digitalWrite(LED, HIGH);
+				ledOff();
 				webSocket.disconnect();
 				sendRequest = true;
 			}
