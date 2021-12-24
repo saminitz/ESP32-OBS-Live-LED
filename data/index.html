@@ -22,7 +22,7 @@
                     <h5 class="mb-0 mt-5">Einstellungen</h5>
                     <p>Hier findest du alle Einstellungen zu deinem Twitch LED Schild.</p>
                     <hr class="my-4" />
-                    <strong class="mb-0">Farben</strong>
+                    <strong class="mb-0">Farben für OBS Zustände</strong>
                     <p>Wähle deine persönliche Farbe für die verschiedenen Modi.</p>
                     <div class="list-group mb-5 shadow">
                         <div class="list-group-item">
@@ -51,11 +51,56 @@
                             <div class="row align-items-center">
                                 <div class="col">
                                     <strong class="mb-0">Helligkeit</strong>
-                                    <p class="text-muted mb-0">Mit diesem Slider kannst du die insgesamte Helligkeit anpassen</p>
+                                    <p class="text-muted mb-0">Mit diesem Slider kannst du die Helligkeit anpassen</p>
                                 </div>
                                 <div class="col-auto">
                                     <label for="brightnessRange">Aktuelle Helligkeit: 0</label>
-                                    <input type="range" class="custom-range" id="brightnessRange" value="0">
+                                    <input type="range" class="custom-range" id="brightnessRange" min="1" max="100" value="1">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <hr class="my-4" />
+                    <strong class="mb-0">Manuell</strong>
+                    <p>
+                        Falls du die LEDs benutzen willst, ohne das du streamst oder aufnimmst, kannst du dies hier einstellen.<br>
+                        Wichtig: Wenn du die LEDs manuell steuerst, überschreibst du die von OBS geregelten Zustände.
+                    </p>
+                    <div class="list-group mb-5 shadow">
+                        <div class="list-group-item">
+                            <div class="row align-items-center">
+                                <div class="col">
+                                    <strong class="mb-0">Manuelle Steuerung</strong>
+                                    <p class="text-muted mb-0">Möchtest du das LED Schild auf manuelle Steuerung umschalten?</p>
+                                </div>
+                                <div class="col-auto">
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="manualControl" />
+                                        <label class="custom-control-label" for="manualControl"></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="list-group-item" id="manualColorDiv" style="display: none;">
+                            <div class="row align-items-center">
+                                <div class="col">
+                                    <strong class="mb-0">Farbe</strong>
+                                    <p class="text-muted mb-0">Diese Farbe wird dauerhaft angezeigt</p>
+                                </div>
+                                <div class="col-auto full">
+                                    <input type="text" class="coloris full" data-coloris id="manualColor">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="list-group-item">
+                            <div class="row align-items-center">
+                                <div class="col">
+                                    <strong class="mb-0">Helligkeit</strong>
+                                    <p class="text-muted mb-0">Mit diesem Slider kannst du die Helligkeit anpassen</p>
+                                </div>
+                                <div class="col-auto">
+                                    <label for="brightnessRange2">Aktuelle Helligkeit: 0</label>
+                                    <input type="range" class="custom-range" id="brightnessRange2" min="1" max="100" value="1">
                                 </div>
                             </div>
                         </div>
@@ -70,40 +115,26 @@
                         <div class="list-group-item">
                             <div class="row align-items-center">
                                 <div class="col">
+                                    <strong class="mb-0">Abschaltzeit</strong>
+                                    <p class="text-muted mb-0">Möchtest du das LED Schild zu einer bestimmten Uhrzeit ausschalten?</p>
+                                </div>
+                                <div class="col-auto">
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="useShutOffTime" />
+                                        <label class="custom-control-label" for="useShutOffTime"></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="list-group-item" id="clockDiv" style="display: none;">
+                            <div class="row align-items-center">
+                                <div class="col">
                                     <strong class="mb-0">Uhrzeit</strong>
                                     <p class="text-muted mb-0">Ab diesem Zeitpunkt werden die LEDs ausgeschaltet.</p>
                                 </div>
                                 <div class="col-auto">
-                                    <div class="timepicker-ui">
-                                        <input type="text" class="timepicker-ui-input" value="12:00 AM" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="list-group-item">
-                            <div class="row align-items-center">
-                                <div class="col">
-                                    <strong class="mb-0">Notify me by email for latest news</strong>
-                                    <p class="text-muted mb-0">Nulla et tincidunt sapien. Sed eleifend volutpat elementum.</p>
-                                </div>
-                                <div class="col-auto">
-                                    <div class="custom-control custom-switch">
-                                        <input type="checkbox" class="custom-control-input" id="alert4" checked="" />
-                                        <label class="custom-control-label" for="alert4"></label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="list-group-item">
-                            <div class="row align-items-center">
-                                <div class="col">
-                                    <strong class="mb-0">Notify me about tips on using account</strong>
-                                    <p class="text-muted mb-0">Donec in quam sed urna bibendum tincidunt quis mollis mauris.</p>
-                                </div>
-                                <div class="col-auto">
-                                    <div class="custom-control custom-switch">
-                                        <input type="checkbox" class="custom-control-input" id="alert5" />
-                                        <label class="custom-control-label"></label>
+                                    <div class="version-24h timepicker-ui">
+                                        <input type="text" class="timepicker-ui-input form-control timepicker-ui-open-element" id="shutOffTime" value="00:00" data-open="timepicker-ui-input" />
                                     </div>
                                 </div>
                             </div>
