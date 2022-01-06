@@ -92,7 +92,7 @@ function initializeObjectsAndEvents() {
         saveSettings();
     });
 
-    document.getElementById('shutOffTime').addEventListener('change', function () {
+    DOMElement.addEventListener('accept', function () {
         saveSettings();
     });
 
@@ -130,7 +130,7 @@ async function loadSettings() {
 
     elementUseShutOffTime.checked = jsonSettings.useShutOffTime;
     elementClockDiv.toggle(jsonSettings.useShutOffTime);
-    elementShutOffTime.value = jsonSettings.shutOffTime.hour + ':' + jsonSettings.shutOffTime.minute;
+    elementShutOffTime.value = jsonSettings.shutOffTime.hour.toString().padStart(2, '0') + ':' + jsonSettings.shutOffTime.minute.toString().padStart(2, '0');
 }
 
 async function saveSettings() {

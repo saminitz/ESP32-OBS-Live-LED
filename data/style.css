@@ -7,6 +7,10 @@ body{
 	padding-top: 4rem;
 }
 
+.disable-readonly-classes[readonly] {
+	background-color: unset;
+}
+
 .list-group {
     display: flex;
     flex-direction: column;

@@ -21,10 +21,9 @@
 #define WIFI_PASSWORD "fff222ccc1234"
 
 #define WEBSOCKET_IP_ADDRESS "192.168.1.38"
-#define WEBSOCKET_PASSWORD "PlanzenGrün!20"
 #define WEBSOCKET_PORT 4446
 
-// Create 
+// Create a WiFiClient
 WiFiClient client;
 // Create a webSocketClient for OBS
 WebSocketsClient webSocket;
@@ -34,7 +33,7 @@ AsyncWebServer server(80);
 JSONVar allSettings;
 
 WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org");
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, 60000);
 
 Adafruit_NeoPixel pixels(NUM_LEDS, PIN_LED, NEO_GRB + NEO_KHZ800);
 
@@ -46,7 +45,6 @@ String obsUuidResponse;
 
 void setup() {
 	pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
-	ledOff();
 
 	// Start Serial Connection
 	Serial.begin(115200);
@@ -80,7 +78,6 @@ void setup() {
 	loadAllSettings();
 
 	timeClient.begin();
-	timeClient.setTimeOffset(1);
 
 
 	// Route for root / web page
@@ -111,8 +108,8 @@ void setup() {
 			file.close();
 			allSettings = JSON.parse(postContent);
 			ledSetBrightness();
-			ledOff();
-			ledOn();
+			ledUpdate(); 
+			checkShutOffTime();
 			request->send(200);
 		});
 
@@ -144,17 +141,25 @@ void setup() {
 	// Try ever 5000 again if connection has failed
 	webSocket.setReconnectInterval(10000);
 
-	if ((bool)allSettings["manualControl"])
-	{
-		ledOn();
-	}
+	ledUpdate();
 }
 
-int timeUpdateCounter = 100;
+unsigned long previousMillisWiFi = 0;
+unsigned long previousMillisOffTime = 0;
+unsigned long interval = 20000;
 void loop() {
 	webSocket.loop();
 
-	if (webSocket.isConnected() && sendInitialRequest)
+	unsigned long currentMillis = millis();
+	// if WiFi is down, try reconnecting
+	if ((WiFi.status() != WL_CONNECTED) && (currentMillis - previousMillisWiFi >= interval)) {
+		Serial.print(millis());
+		Serial.println("Reconnecting to WiFi...");
+		WiFi.disconnect();
+		WiFi.reconnect();
+		previousMillisWiFi = currentMillis;
+	}
+	else if (webSocket.isConnected() && sendInitialRequest)
 	{
 		sendInitialRequest = false;
 		Serial.println("Sending Request");
@@ -163,26 +168,48 @@ void loop() {
 		webSocket.sendTXT("{\"message-id\":\"" + uuid + "\",\"request-type\":\"GetStreamingStatus\"}");
 	}
 
-	if (timeUpdateCounter == 0) {
-		timeUpdateCounter = 100;
-		timeClient.update();
-		int realTime = timeClient.getHours() * 100 + timeClient.getMinutes();
-		int shutOffTime = (int)allSettings["shutOffTime"]["hour"] * 100 + (int)allSettings["shutOffTime"]["minute"];
-		if ((bool)allSettings["useShutOffTime"] && (realTime >= shutOffTime || realTime <= 600))
-		{
-			ledTimeSwitch = true;
-		}
-		else
-		{
-			ledTimeSwitch = false;
-		}
-	}
-	else
-	{
-		timeUpdateCounter--;
+	if (currentMillis - previousMillisOffTime >= interval) {
+		checkShutOffTime();
+		previousMillisOffTime = currentMillis;
 	}
 
 	delay(100);
+}
+
+bool tempLedTimeSwitch = false;
+void checkShutOffTime() {
+	int shutOffTime = (int)allSettings["shutOffTime"]["hour"] * 100 + (int)allSettings["shutOffTime"]["minute"];
+
+	if ((bool)allSettings["useShutOffTime"] && isRealtimeBetween(shutOffTime, 600))
+	{
+		ledTimeSwitch = true;
+	}
+	else
+	{
+		ledTimeSwitch = false;
+	}
+
+	// To prevent too many updates on the LEDs
+	if (ledTimeSwitch != tempLedTimeSwitch)
+	{
+		Serial.println("Updateing LED from Time");
+		tempLedTimeSwitch = ledTimeSwitch;
+		ledUpdate();
+	}
+}
+
+bool isRealtimeBetween(int start, int end) {
+	timeClient.update();
+	int realtime = timeClient.getHours() * 100 + timeClient.getMinutes();
+
+	if ((realtime >= start && realtime < end) || (start > end && (realtime >= start || realtime < end)))
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 uint32_t hexToUInt32(String hexColor)
@@ -210,14 +237,12 @@ void loadAllSettings()
 	ledSetBrightness();
 }
 
-void ledOn()
+void ledUpdate()
 {
-	/*Serial.println((bool)allSettings["manualControl"]);
-	Serial.println(ledTimeSwitch);
-	Serial.println(currentlyStreaming);
-	Serial.println(currentlyRecording);*/
 	if (!(bool)allSettings["manualControl"] && ledTimeSwitch)
 	{
+		pixels.clear();
+		pixels.show();
 		return;
 	}
 
@@ -233,6 +258,11 @@ void ledOn()
 	{
 		ledLoop((const char*)allSettings["recordingColor"]);
 	}
+	else
+	{
+		pixels.clear();
+		pixels.show();
+	}
 }
 
 void ledLoop(const char* color)
@@ -241,17 +271,6 @@ void ledLoop(const char* color)
 	{
 		pixels.setPixelColor(i, hexToUInt32(color));
 	}
-	pixels.show();
-}
-
-void ledOff()
-{
-	if ((bool)allSettings["manualControl"])
-	{
-		return;
-	}
-
-	pixels.clear();
 	pixels.show();
 }
 
@@ -268,7 +287,7 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
 		sendInitialRequest = true;
 		currentlyStreaming = false;
 		currentlyRecording = false;
-		ledOff();
+		ledUpdate();
 		break;
 
 	case WStype_CONNECTED:
@@ -294,20 +313,20 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
 				{
 					Serial.println("[WebSocket] Status: live!");
 					currentlyStreaming = true;
-					ledOn();
+					ledUpdate();
 				}
 				else if (json["recording"])
 				{
 					Serial.println("[WebSocket] Status: recording!");
 					currentlyRecording = true;
-					ledOn();
+					ledUpdate();
 				}
 				else
 				{
 					Serial.println("[WebSocket] Status: not live!");
 					currentlyStreaming = false;
 					currentlyRecording = false;
-					ledOff();
+					ledUpdate();
 				}
 			}
 			else
@@ -323,25 +342,25 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
 			{
 				Serial.println("[WebSocket] Event: live!");
 				currentlyStreaming = true;
-				ledOn();
+				ledUpdate();
 			}
 			else if (updateType == "RecordingStarting" || updateType == "RecordingStarted" || updateType == "RecordingResumed")
 			{
 				Serial.println("[WebSocket] Event: recoding!");
 				currentlyRecording = true;
-				ledOn();
+				ledUpdate();
 			}
 			else if (updateType == "StreamStopping" || updateType == "StreamStopped")
 			{
 				Serial.println("[WebSocket] Event: not live!");
 				currentlyStreaming = false;
-				ledOff();
+				ledUpdate();
 			}
 			else if (updateType == "RecordingStopping" || updateType == "RecordingStopped" || updateType == "RecordingPaused")
 			{
 				Serial.println("[WebSocket] Event: not recording!");
 				currentlyRecording = false;
-				ledOff();
+				ledUpdate();
 			}
 			else if (updateType == "StreamStatus")
 			{
@@ -351,20 +370,20 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
 					{
 						Serial.println("[WebSocket] StreamStatus: live!");
 						currentlyStreaming = true;
-						ledOn();
+						ledUpdate();
 					}
 					else if (json["recording"])
 					{
 						Serial.println("[WebSocket] StreamStatus: recoding!");
 						currentlyRecording = true;
-						ledOn();
+						ledUpdate();
 					}
 					else
 					{
 						Serial.println("[WebSocket] StreamStatus: not live!");
 						currentlyStreaming = false;
 						currentlyRecording = false;
-						ledOff();
+						ledUpdate();
 					}
 				}
 			}
@@ -373,7 +392,7 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
 				Serial.println("[WebSocket] OBS is closing... Disconnecting");
 				currentlyStreaming = false;
 				currentlyRecording = false;
-				ledOff();
+				ledUpdate();
 				webSocket.disconnect();
 				sendInitialRequest = true;
 			}
