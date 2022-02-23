@@ -3,10 +3,10 @@
  Created:	12.11.2021 22:11:42
  Author:	Samuel Nitzsche
 */
-
 #include <string>
 #include <WiFi.h>
 #include <SPIFFS.h>
+#include <Arduino.h>
 #include <WiFiUdp.h>
 #include <ESP-UUID.h>
 #include <NTPClient.h>
@@ -42,6 +42,15 @@ bool ledTimeSwitch = false;
 bool currentlyStreaming = false;
 bool currentlyRecording = false;
 String obsUuidResponse;
+
+void checkShutOffTime();
+bool isRealtimeBetween(int start, int end);
+uint32_t hexToUInt32(String hexColor);
+void loadAllSettings();
+void ledUpdate();
+void ledLoop(const char* color);
+void ledSetBrightness();
+void webSocketEvent(WStype_t type, uint8_t* payload, size_t length);
 
 void setup() {
 	pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
@@ -282,134 +291,133 @@ void ledSetBrightness()
 
 void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
 	switch (type) {
-	case WStype_DISCONNECTED:
-		Serial.println("[WebSocket] Disconnected!");
-		sendInitialRequest = true;
-		currentlyStreaming = false;
-		currentlyRecording = false;
-		ledUpdate();
-		break;
+		case WStype_DISCONNECTED:
+			Serial.println("[WebSocket] Disconnected!");
+			sendInitialRequest = true;
+			currentlyStreaming = false;
+			currentlyRecording = false;
+			ledUpdate();
+			break;
 
-	case WStype_CONNECTED:
-		Serial.printf("[WebSocket] Connected to URL: %s\r\n", payload);
-		break;
+		case WStype_CONNECTED:
+			Serial.printf("[WebSocket] Connected to URL: %s\r\n", payload);
+			break;
 
-	case WStype_TEXT:
-	{
-		//Serial.printf("[WebSocket] Got text: %s\r\n", payload);
-		JSONVar json = JSON.parse((char*)payload);
-		Serial.println((const char*)payload);
-
-
-		if (json.hasOwnProperty("message-id"))
+		case WStype_TEXT:
 		{
-			if (obsUuidResponse == json["message-id"]) {
-				if (strcmp(json["status"], "ok") != 0)
-				{
-					Serial.print("[WebSocket] Status was revived as ERROR");
-					break;
-				}
-				if (json["streaming"])
-				{
-					Serial.println("[WebSocket] Status: live!");
-					currentlyStreaming = true;
-					ledUpdate();
-				}
-				else if (json["recording"])
-				{
-					Serial.println("[WebSocket] Status: recording!");
-					currentlyRecording = true;
-					ledUpdate();
-				}
-				else
-				{
-					Serial.println("[WebSocket] Status: not live!");
-					currentlyStreaming = false;
-					currentlyRecording = false;
-					ledUpdate();
-				}
-			}
-			else
-			{
-				Serial.println("UUIDs not equal!");
-			}
-		}
-		else if (json.hasOwnProperty("update-type"))
-		{
-			String updateType = (const char*)json["update-type"];
+			//Serial.printf("[WebSocket] Got text: %s\r\n", payload);
+			JSONVar json = JSON.parse((char*)payload);
+			Serial.println((const char*)payload);
 
-			if (updateType == "StreamStarting" || updateType == "StreamStarted")
+
+			if (json.hasOwnProperty("message-id"))
 			{
-				Serial.println("[WebSocket] Event: live!");
-				currentlyStreaming = true;
-				ledUpdate();
-			}
-			else if (updateType == "RecordingStarting" || updateType == "RecordingStarted" || updateType == "RecordingResumed")
-			{
-				Serial.println("[WebSocket] Event: recoding!");
-				currentlyRecording = true;
-				ledUpdate();
-			}
-			else if (updateType == "StreamStopping" || updateType == "StreamStopped")
-			{
-				Serial.println("[WebSocket] Event: not live!");
-				currentlyStreaming = false;
-				ledUpdate();
-			}
-			else if (updateType == "RecordingStopping" || updateType == "RecordingStopped" || updateType == "RecordingPaused")
-			{
-				Serial.println("[WebSocket] Event: not recording!");
-				currentlyRecording = false;
-				ledUpdate();
-			}
-			else if (updateType == "StreamStatus")
-			{
-				if (json.hasOwnProperty("streaming") && json.hasOwnProperty("recording"))
-				{
+				if (obsUuidResponse == json["message-id"]) {
+					if (strcmp(json["status"], "ok") != 0)
+					{
+						Serial.print("[WebSocket] Status was revived as ERROR");
+						break;
+					}
 					if (json["streaming"])
 					{
-						Serial.println("[WebSocket] StreamStatus: live!");
+						Serial.println("[WebSocket] Status: live!");
 						currentlyStreaming = true;
 						ledUpdate();
 					}
 					else if (json["recording"])
 					{
-						Serial.println("[WebSocket] StreamStatus: recoding!");
+						Serial.println("[WebSocket] Status: recording!");
 						currentlyRecording = true;
 						ledUpdate();
 					}
 					else
 					{
-						Serial.println("[WebSocket] StreamStatus: not live!");
+						Serial.println("[WebSocket] Status: not live!");
 						currentlyStreaming = false;
 						currentlyRecording = false;
 						ledUpdate();
 					}
 				}
+				else
+				{
+					Serial.println("UUIDs not equal!");
+				}
 			}
-			else if (updateType == "Exiting")
+			else if (json.hasOwnProperty("update-type"))
 			{
-				Serial.println("[WebSocket] OBS is closing... Disconnecting");
-				currentlyStreaming = false;
-				currentlyRecording = false;
-				ledUpdate();
-				webSocket.disconnect();
-				sendInitialRequest = true;
-			}
-		}
-		else
-		{
-			Serial.println("Not known json response");
-		}
-		break;
-	}
+				String updateType = (const char*)json["update-type"];
 
-	case WStype_ERROR:
-		Serial.printf("[WebSocket] Error: %s\r\n", payload);
-	case WStype_FRAGMENT_TEXT_START:
-	case WStype_FRAGMENT_BIN_START:
-	case WStype_FRAGMENT:
-	case WStype_FRAGMENT_FIN:
-		break;
+				if (updateType == "StreamStarting" || updateType == "StreamStarted")
+				{
+					Serial.println("[WebSocket] Event: live!");
+					currentlyStreaming = true;
+					ledUpdate();
+				}
+				else if (updateType == "RecordingStarting" || updateType == "RecordingStarted" || updateType == "RecordingResumed")
+				{
+					Serial.println("[WebSocket] Event: recoding!");
+					currentlyRecording = true;
+					ledUpdate();
+				}
+				else if (updateType == "StreamStopping" || updateType == "StreamStopped")
+				{
+					Serial.println("[WebSocket] Event: not live!");
+					currentlyStreaming = false;
+					ledUpdate();
+				}
+				else if (updateType == "RecordingStopping" || updateType == "RecordingStopped" || updateType == "RecordingPaused")
+				{
+					Serial.println("[WebSocket] Event: not recording!");
+					currentlyRecording = false;
+					ledUpdate();
+				}
+				else if (updateType == "StreamStatus")
+				{
+					if (json.hasOwnProperty("streaming") && json.hasOwnProperty("recording"))
+					{
+						if (json["streaming"])
+						{
+							Serial.println("[WebSocket] StreamStatus: live!");
+							currentlyStreaming = true;
+							ledUpdate();
+						}
+						else if (json["recording"])
+						{
+							Serial.println("[WebSocket] StreamStatus: recoding!");
+							currentlyRecording = true;
+							ledUpdate();
+						}
+						else
+						{
+							Serial.println("[WebSocket] StreamStatus: not live!");
+							currentlyStreaming = false;
+							currentlyRecording = false;
+							ledUpdate();
+						}
+					}
+				}
+				else if (updateType == "Exiting")
+				{
+					Serial.println("[WebSocket] OBS is closing... Disconnecting");
+					currentlyStreaming = false;
+					currentlyRecording = false;
+					ledUpdate();
+					webSocket.disconnect();
+					sendInitialRequest = true;
+				}
+			}
+			else
+			{
+				Serial.println("Not known json response");
+			}
+			break;
+		}
+
+		case WStype_ERROR:
+			Serial.printf("[WebSocket] Error: %s\r\n", payload);
+			break;
+
+		default:
+			break;
 	}
 }
