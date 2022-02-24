@@ -23,6 +23,8 @@
 #define WEBSOCKET_IP_ADDRESS "192.168.1.38"
 #define WEBSOCKET_PORT 4446
 
+#define LOG_SIZE 1024
+
 // Create a WiFiClient
 WiFiClient client;
 // Create a webSocketClient for OBS
@@ -42,17 +44,27 @@ bool ledTimeSwitch = false;
 bool currentlyStreaming = false;
 bool currentlyRecording = false;
 String obsUuidResponse;
+String logArray[LOG_SIZE];
+int logPointer = 0;
 
+// Function declaration
 void checkShutOffTime();
 bool isRealtimeBetween(int start, int end);
 uint32_t hexToUInt32(String hexColor);
 void loadAllSettings();
 void ledUpdate();
-void ledLoop(const char* color);
+void ledLoop(const char *color);
 void ledSetBrightness();
-void webSocketEvent(WStype_t type, uint8_t* payload, size_t length);
+void webSocketEvent(WStype_t type, uint8_t *payload, size_t length);
+void logPrintf(const char *format, ...);
+void logPrint(String str);
+void logPrintln(String str);
+void logStringAndSerialPrint(String str);
+String logArrayToString();
 
-void setup() {
+// Function definition
+void setup()
+{
 	pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
 
 	// Start Serial Connection
@@ -60,49 +72,48 @@ void setup() {
 	delay(1000);
 
 	// Initialize SPIFFS
-	if (!SPIFFS.begin(true)) {
-		Serial.println("An Error has occurred while mounting SPIFFS");
+	if (!SPIFFS.begin(true))
+	{
+		logPrintln("An Error has occurred while mounting SPIFFS");
 		return;
 	}
 
 	// Start connecting to a WiFi network
-	Serial.println();
-	Serial.println();
-	//Serial.print("[WIFI] Connecting to ");
-	//Serial.print(WIFI_SSID);
+	logPrint("[WiFi] Connecting to ");
+	logPrint(WIFI_SSID);
 
 	WiFi.setHostname("Twitch-LED-Schild");
 	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-	while (WiFi.status() != WL_CONNECTED) {
+	while (WiFi.status() != WL_CONNECTED)
+	{
 		delay(500);
-		Serial.print(".");
+		logPrint(".");
 	}
 
-	Serial.println("");
-	Serial.println("[WIFI] Connected");
-	Serial.print("[WIFI] IP address: ");
-	Serial.println(WiFi.localIP());
-	Serial.println("");
+	logPrintln("");
+	logPrintln("[WiFi] Connected");
+	logPrint("[WiFi] IP address: ");
+	logPrintln(WiFi.localIP().toString());
 
 	loadAllSettings();
 
 	timeClient.begin();
 
-
 	// Route for root / web page
-	server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
-		request->send(SPIFFS, "/index.html", String(), false);
-		});
-	server.on("/getSettings", HTTP_GET, [](AsyncWebServerRequest* request) {
-		Serial.println("[WebsiteUI] Request");
+	server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+			  { request->send(SPIFFS, "/index.html", String(), false); });
+	server.on("/getSettings", HTTP_GET, [](AsyncWebServerRequest *request)
+			  {
+		logPrintln("[WebsiteUI] Request");
 		AsyncResponseStream* response = request->beginResponseStream("application/json");
 		File file = SPIFFS.open("/settings.json", "r");
 		String json = file.readString();
 		response->print(json);
-		request->send(response);
-		});
-	server.on("/postSettings", HTTP_POST, [](AsyncWebServerRequest* request) {}, NULL,
-		[](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
+		request->send(response); });
+	server.on(
+		"/postSettings", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL,
+		[](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total)
+		{
 			// The following print statements work + removing them makes no difference
 			// This is displayed on monitor "Content type::application/x-www-form-urlencoded"
 			String postContent = "";
@@ -110,33 +121,44 @@ void setup() {
 			{
 				postContent += (char)data[i];
 			}
-			Serial.print("[WebsiteUI] Einstellungen werden gespeichert: ");
-			Serial.println(postContent);
+			logPrint("[WebsiteUI] Einstellungen werden gespeichert: ");
+			logPrintln(postContent);
 			File file = SPIFFS.open("/settings.json", "w+");
 			file.print(postContent);
 			file.close();
 			allSettings = JSON.parse(postContent);
 			ledSetBrightness();
-			ledUpdate(); 
+			ledUpdate();
 			checkShutOffTime();
 			request->send(200);
 		});
 
 	// Route to load style CSS file
-	server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/style.css", "text/css"); });
+	server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request)
+			  { request->send(SPIFFS, "/style.css", "text/css"); });
 	// Route to load Twtich-Settings SVG file
-	server.on("/Twtich-Settings.svg", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/Twtich-Settings.svg", "image/svg+xml"); });
+	server.on("/Twtich-Settings.svg", HTTP_GET, [](AsyncWebServerRequest *request)
+			  { request->send(SPIFFS, "/Twtich-Settings.svg", "image/svg+xml"); });
 	// Route to load Twitch-Logo SVG file
-	server.on("/Twtich-Logo.svg", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/Twtich-Logo.svg", "image/svg+xml"); });
+	server.on("/Twtich-Logo.svg", HTTP_GET, [](AsyncWebServerRequest *request)
+			  { request->send(SPIFFS, "/Twtich-Logo.svg", "image/svg+xml"); });
 	// Route to load coloris CSS file
-	server.on("/coloris.css", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/coloris.css", "text/css"); });
+	server.on("/coloris.css", HTTP_GET, [](AsyncWebServerRequest *request)
+			  { request->send(SPIFFS, "/coloris.css", "text/css"); });
 
 	// Route to load timepicker javascript
-	server.on("/timepicker-ui.js", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/timepicker-ui.js", "text/javascript"); });
+	server.on("/timepicker-ui.js", HTTP_GET, [](AsyncWebServerRequest *request)
+			  { request->send(SPIFFS, "/timepicker-ui.js", "text/javascript"); });
 	// Route to load coloris javascript
-	server.on("/coloris.js", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/coloris.js", "text/javascript"); });
+	server.on("/coloris.js", HTTP_GET, [](AsyncWebServerRequest *request)
+			  { request->send(SPIFFS, "/coloris.js", "text/javascript"); });
 	// Route to load index javascript file
-	server.on("/index.js", HTTP_GET, [](AsyncWebServerRequest* request) { request->send(SPIFFS, "/index.js", "text/javascript"); });
+	server.on("/index.js", HTTP_GET, [](AsyncWebServerRequest *request)
+			  { request->send(SPIFFS, "/index.js", "text/javascript"); });
+
+	// Route to load the logs
+	server.on("/log", HTTP_GET, [](AsyncWebServerRequest *request)
+			  { request->send(200, "text/plain", logArrayToString()); });
 
 	// Start server
 	server.begin();
@@ -156,14 +178,16 @@ void setup() {
 unsigned long previousMillisWiFi = 0;
 unsigned long previousMillisOffTime = 0;
 unsigned long interval = 20000;
-void loop() {
+void loop()
+{
 	webSocket.loop();
 
 	unsigned long currentMillis = millis();
 	// if WiFi is down, try reconnecting
-	if ((WiFi.status() != WL_CONNECTED) && (currentMillis - previousMillisWiFi >= interval)) {
-		Serial.print(millis());
-		Serial.println("Reconnecting to WiFi...");
+	if ((WiFi.status() != WL_CONNECTED) && (currentMillis - previousMillisWiFi >= interval))
+	{
+		logPrint(String(millis()));
+		logPrintln("[WiFi] Reconnecting to WiFi...");
 		WiFi.disconnect();
 		WiFi.reconnect();
 		previousMillisWiFi = currentMillis;
@@ -171,13 +195,14 @@ void loop() {
 	else if (webSocket.isConnected() && sendInitialRequest)
 	{
 		sendInitialRequest = false;
-		Serial.println("Sending Request");
+		logPrintln("[WebSocket] Sending Request");
 		String uuid = StringUUIDGen();
 		obsUuidResponse = uuid;
 		webSocket.sendTXT("{\"message-id\":\"" + uuid + "\",\"request-type\":\"GetStreamingStatus\"}");
 	}
 
-	if (currentMillis - previousMillisOffTime >= interval) {
+	if (currentMillis - previousMillisOffTime >= interval)
+	{
 		checkShutOffTime();
 		previousMillisOffTime = currentMillis;
 	}
@@ -186,7 +211,8 @@ void loop() {
 }
 
 bool tempLedTimeSwitch = false;
-void checkShutOffTime() {
+void checkShutOffTime()
+{
 	int shutOffTime = (int)allSettings["shutOffTime"]["hour"] * 100 + (int)allSettings["shutOffTime"]["minute"];
 
 	if ((bool)allSettings["useShutOffTime"] && isRealtimeBetween(shutOffTime, 600))
@@ -201,13 +227,14 @@ void checkShutOffTime() {
 	// To prevent too many updates on the LEDs
 	if (ledTimeSwitch != tempLedTimeSwitch)
 	{
-		Serial.println("Updateing LED from Time");
+		logPrintln("[Shutoff Time] Updateing LED from Time");
 		tempLedTimeSwitch = ledTimeSwitch;
 		ledUpdate();
 	}
 }
 
-bool isRealtimeBetween(int start, int end) {
+bool isRealtimeBetween(int start, int end)
+{
 	timeClient.update();
 	int realtime = timeClient.getHours() * 100 + timeClient.getMinutes();
 
@@ -223,11 +250,13 @@ bool isRealtimeBetween(int start, int end) {
 
 uint32_t hexToUInt32(String hexColor)
 {
-	if (hexColor[0] == '#') {
+	if (hexColor[0] == '#')
+	{
 		hexColor = hexColor.substring(1);
 	}
 
-	while (hexColor.length() != 6) {
+	while (hexColor.length() != 6)
+	{
 		hexColor += "0";
 	}
 
@@ -241,7 +270,7 @@ void loadAllSettings()
 {
 	File file = SPIFFS.open("/settings.json", "r");
 	String json = file.readString();
-	Serial.println(json);
+	logPrintln("[Settings] " + json);
 	allSettings = JSON.parse(json);
 	ledSetBrightness();
 }
@@ -257,15 +286,15 @@ void ledUpdate()
 
 	if ((bool)allSettings["manualControl"])
 	{
-		ledLoop((const char*)allSettings["manualColor"]);
+		ledLoop((const char *)allSettings["manualColor"]);
 	}
 	else if (currentlyStreaming)
 	{
-		ledLoop((const char*)allSettings["streamingColor"]);
+		ledLoop((const char *)allSettings["streamingColor"]);
 	}
 	else if (currentlyRecording)
 	{
-		ledLoop((const char*)allSettings["recordingColor"]);
+		ledLoop((const char *)allSettings["recordingColor"]);
 	}
 	else
 	{
@@ -274,7 +303,7 @@ void ledUpdate()
 	}
 }
 
-void ledLoop(const char* color)
+void ledLoop(const char *color)
 {
 	for (size_t i = 0; i < NUM_LEDS; i++)
 	{
@@ -289,135 +318,174 @@ void ledSetBrightness()
 	pixels.show();
 }
 
-void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
-	switch (type) {
-		case WStype_DISCONNECTED:
-			Serial.println("[WebSocket] Disconnected!");
-			sendInitialRequest = true;
-			currentlyStreaming = false;
-			currentlyRecording = false;
-			ledUpdate();
-			break;
+void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
+{
+	switch (type)
+	{
+	case WStype_DISCONNECTED:
+		logPrintln("[WebSocket] Disconnected!");
+		sendInitialRequest = true;
+		currentlyStreaming = false;
+		currentlyRecording = false;
+		ledUpdate();
+		break;
 
-		case WStype_CONNECTED:
-			Serial.printf("[WebSocket] Connected to URL: %s\r\n", payload);
-			break;
+	case WStype_CONNECTED:
+		logPrintf("[WebSocket] Connected to URL: %s\r\n", payload);
+		break;
 
-		case WStype_TEXT:
+	case WStype_TEXT:
+	{
+		// logPrintf("[WebSocket] Got text: %s\r\n", payload);
+		JSONVar json = JSON.parse((char *)payload);
+		logPrintln((const char *)payload);
+
+		if (json.hasOwnProperty("message-id"))
 		{
-			//Serial.printf("[WebSocket] Got text: %s\r\n", payload);
-			JSONVar json = JSON.parse((char*)payload);
-			Serial.println((const char*)payload);
-
-
-			if (json.hasOwnProperty("message-id"))
+			if (obsUuidResponse == json["message-id"])
 			{
-				if (obsUuidResponse == json["message-id"]) {
-					if (strcmp(json["status"], "ok") != 0)
-					{
-						Serial.print("[WebSocket] Status was revived as ERROR");
-						break;
-					}
+				if (strcmp(json["status"], "ok") != 0)
+				{
+					logPrint("[WebSocket] Status was revived as ERROR");
+					break;
+				}
+				if (json["streaming"])
+				{
+					logPrintln("[WebSocket] Status: live!");
+					currentlyStreaming = true;
+					ledUpdate();
+				}
+				else if (json["recording"])
+				{
+					logPrintln("[WebSocket] Status: recording!");
+					currentlyRecording = true;
+					ledUpdate();
+				}
+				else
+				{
+					logPrintln("[WebSocket] Status: not live!");
+					currentlyStreaming = false;
+					currentlyRecording = false;
+					ledUpdate();
+				}
+			}
+			else
+			{
+				logPrintln("UUIDs not equal!");
+			}
+		}
+		else if (json.hasOwnProperty("update-type"))
+		{
+			String updateType = (const char *)json["update-type"];
+
+			if (updateType == "StreamStarting" || updateType == "StreamStarted")
+			{
+				logPrintln("[WebSocket] Event: live!");
+				currentlyStreaming = true;
+				ledUpdate();
+			}
+			else if (updateType == "RecordingStarting" || updateType == "RecordingStarted" || updateType == "RecordingResumed")
+			{
+				logPrintln("[WebSocket] Event: recoding!");
+				currentlyRecording = true;
+				ledUpdate();
+			}
+			else if (updateType == "StreamStopping" || updateType == "StreamStopped")
+			{
+				logPrintln("[WebSocket] Event: not live!");
+				currentlyStreaming = false;
+				ledUpdate();
+			}
+			else if (updateType == "RecordingStopping" || updateType == "RecordingStopped" || updateType == "RecordingPaused")
+			{
+				logPrintln("[WebSocket] Event: not recording!");
+				currentlyRecording = false;
+				ledUpdate();
+			}
+			else if (updateType == "StreamStatus")
+			{
+				if (json.hasOwnProperty("streaming") && json.hasOwnProperty("recording"))
+				{
 					if (json["streaming"])
 					{
-						Serial.println("[WebSocket] Status: live!");
+						logPrintln("[WebSocket] StreamStatus: live!");
 						currentlyStreaming = true;
 						ledUpdate();
 					}
 					else if (json["recording"])
 					{
-						Serial.println("[WebSocket] Status: recording!");
+						logPrintln("[WebSocket] StreamStatus: recoding!");
 						currentlyRecording = true;
 						ledUpdate();
 					}
 					else
 					{
-						Serial.println("[WebSocket] Status: not live!");
+						logPrintln("[WebSocket] StreamStatus: not live!");
 						currentlyStreaming = false;
 						currentlyRecording = false;
 						ledUpdate();
 					}
 				}
-				else
-				{
-					Serial.println("UUIDs not equal!");
-				}
 			}
-			else if (json.hasOwnProperty("update-type"))
+			else if (updateType == "Exiting")
 			{
-				String updateType = (const char*)json["update-type"];
-
-				if (updateType == "StreamStarting" || updateType == "StreamStarted")
-				{
-					Serial.println("[WebSocket] Event: live!");
-					currentlyStreaming = true;
-					ledUpdate();
-				}
-				else if (updateType == "RecordingStarting" || updateType == "RecordingStarted" || updateType == "RecordingResumed")
-				{
-					Serial.println("[WebSocket] Event: recoding!");
-					currentlyRecording = true;
-					ledUpdate();
-				}
-				else if (updateType == "StreamStopping" || updateType == "StreamStopped")
-				{
-					Serial.println("[WebSocket] Event: not live!");
-					currentlyStreaming = false;
-					ledUpdate();
-				}
-				else if (updateType == "RecordingStopping" || updateType == "RecordingStopped" || updateType == "RecordingPaused")
-				{
-					Serial.println("[WebSocket] Event: not recording!");
-					currentlyRecording = false;
-					ledUpdate();
-				}
-				else if (updateType == "StreamStatus")
-				{
-					if (json.hasOwnProperty("streaming") && json.hasOwnProperty("recording"))
-					{
-						if (json["streaming"])
-						{
-							Serial.println("[WebSocket] StreamStatus: live!");
-							currentlyStreaming = true;
-							ledUpdate();
-						}
-						else if (json["recording"])
-						{
-							Serial.println("[WebSocket] StreamStatus: recoding!");
-							currentlyRecording = true;
-							ledUpdate();
-						}
-						else
-						{
-							Serial.println("[WebSocket] StreamStatus: not live!");
-							currentlyStreaming = false;
-							currentlyRecording = false;
-							ledUpdate();
-						}
-					}
-				}
-				else if (updateType == "Exiting")
-				{
-					Serial.println("[WebSocket] OBS is closing... Disconnecting");
-					currentlyStreaming = false;
-					currentlyRecording = false;
-					ledUpdate();
-					webSocket.disconnect();
-					sendInitialRequest = true;
-				}
+				logPrintln("[WebSocket] OBS is closing... Disconnecting");
+				currentlyStreaming = false;
+				currentlyRecording = false;
+				ledUpdate();
+				webSocket.disconnect();
+				sendInitialRequest = true;
 			}
-			else
-			{
-				Serial.println("Not known json response");
-			}
-			break;
 		}
-
-		case WStype_ERROR:
-			Serial.printf("[WebSocket] Error: %s\r\n", payload);
-			break;
-
-		default:
-			break;
+		else
+		{
+			logPrintln("[WebSocket] Not known json response");
+		}
+		break;
 	}
+
+	case WStype_ERROR:
+		logPrintf("[WebSocket] Error: %s\r\n", payload);
+		break;
+
+	default:
+		break;
+	}
+}
+
+void logPrintf(const char *format, ...)
+{
+	char buff[128];
+	va_list arg;
+	va_start(arg, format);
+	sprintf(buff, format, arg);
+	logStringAndSerialPrint(buff);
+}
+
+void logPrint(String str)
+{
+	logStringAndSerialPrint(str);
+}
+
+void logPrintln(String str)
+{
+	logStringAndSerialPrint(str + "\r\n");
+}
+
+void logStringAndSerialPrint(String str)
+{
+	logArray[logPointer] = str;
+	logPointer = (logPointer + 1) % 200;
+	Serial.print(str);
+}
+
+String logArrayToString()
+{
+	String logStr = "";
+	for (int i = 0; i < LOG_SIZE; i++)
+	{
+		logStr += logArray[(logPointer + i) % LOG_SIZE];
+	}
+	logStr.trim();
+	return logStr;
 }

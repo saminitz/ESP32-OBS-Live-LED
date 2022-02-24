@@ -3,7 +3,7 @@ An Arduino script that uses the [obs-websocket](https://github.com/obsproject/ob
 All settings are controlled via a web interface. The website has a Twitch theme.
 
 ### Implemented Features ✓
-- Controll connected LEDs acording to the OBS status
+- Control connected LEDs according to the OBS status
 - Web Interface 
   - Save and load settings from ESP32 storage
   - Regulation of streaming and recording color
@@ -11,6 +11,7 @@ All settings are controlled via a web interface. The website has a Twitch theme.
   - Time schedule after which the LEDs do not turn on even if OBS is still live
   - Manual control of the LEDs
   - Manual color
+  - Access log via "/log"
 
 ### Coming Features
 - Web Interface (Twitch specific & German)
