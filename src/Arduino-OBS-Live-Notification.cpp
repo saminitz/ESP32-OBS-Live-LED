@@ -8,7 +8,7 @@
 #include <SPIFFS.h>
 #include <Arduino.h>
 #include <WiFiUdp.h>
-#include <ESP-UUID.h>
+#include <uuid.h>
 #include <NTPClient.h>
 #include <Arduino_JSON.h>
 #include <WebSocketsClient.h>
