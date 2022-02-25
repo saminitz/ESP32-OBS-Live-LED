@@ -57,9 +57,10 @@ void ledLoop(const char *color);
 void ledSetBrightness();
 void webSocketEvent(WStype_t type, uint8_t *payload, size_t length);
 void logPrintf(const char *format, ...);
-void logPrint(String str);
-void logPrintln(String str);
-void logStringAndSerialPrint(String str);
+void logPrint(String str, bool addTime = true);
+void logPrintln();
+void logPrintln(String str, bool addTime = true);
+void logStringAndSerialPrint(String str, bool addTime = true);
 String logArrayToString();
 
 // Function definition
@@ -80,20 +81,20 @@ void setup()
 
 	// Start connecting to a WiFi network
 	logPrint("[WiFi] Connecting to ");
-	logPrint(WIFI_SSID);
+	logPrint(WIFI_SSID, false);
 
 	WiFi.setHostname("Twitch-LED-Schild");
 	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 	while (WiFi.status() != WL_CONNECTED)
 	{
 		delay(500);
-		logPrint(".");
+		logPrint(".", false);
 	}
 
-	logPrintln("");
+	logPrintln();
 	logPrintln("[WiFi] Connected");
 	logPrint("[WiFi] IP address: ");
-	logPrintln(WiFi.localIP().toString());
+	logPrintln(WiFi.localIP().toString(), false);
 
 	loadAllSettings();
 
@@ -122,7 +123,7 @@ void setup()
 				postContent += (char)data[i];
 			}
 			logPrint("[WebsiteUI] Einstellungen werden gespeichert: ");
-			logPrintln(postContent);
+			logPrintln(postContent, false);
 			File file = SPIFFS.open("/settings.json", "w+");
 			file.print(postContent);
 			file.close();
@@ -186,7 +187,6 @@ void loop()
 	// if WiFi is down, try reconnecting
 	if ((WiFi.status() != WL_CONNECTED) && (currentMillis - previousMillisWiFi >= interval))
 	{
-		logPrint(String(millis()));
 		logPrintln("[WiFi] Reconnecting to WiFi...");
 		WiFi.disconnect();
 		WiFi.reconnect();
@@ -331,7 +331,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 		break;
 
 	case WStype_CONNECTED:
-		logPrintf("[WebSocket] Connected to URL: %s\r\n", payload);
+		logPrintf("[WebSocket] Connected to URL: %s\r\n", (const char *)payload);
 		break;
 
 	case WStype_TEXT:
@@ -346,7 +346,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 			{
 				if (strcmp(json["status"], "ok") != 0)
 				{
-					logPrint("[WebSocket] Status was revived as ERROR");
+					logPrintln("[WebSocket] Status was revived as ERROR");
 					break;
 				}
 				if (json["streaming"])
@@ -445,7 +445,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 	}
 
 	case WStype_ERROR:
-		logPrintf("[WebSocket] Error: %s\r\n", payload);
+		logPrintf("[WebSocket] Error: %s\r\n", (const char *)payload);
 		break;
 
 	default:
@@ -462,19 +462,31 @@ void logPrintf(const char *format, ...)
 	logStringAndSerialPrint(buff);
 }
 
-void logPrint(String str)
+void logPrint(String str, bool addTime)
 {
-	logStringAndSerialPrint(str);
+	logStringAndSerialPrint(str, addTime);
 }
 
-void logPrintln(String str)
+void logPrintln()
 {
-	logStringAndSerialPrint(str + "\r\n");
+	logStringAndSerialPrint("\r\n", false);
 }
 
-void logStringAndSerialPrint(String str)
+void logPrintln(String str, bool addTime)
 {
-	logArray[logPointer] = str;
+	logStringAndSerialPrint(str + "\r\n", addTime);
+}
+
+void logStringAndSerialPrint(String str, bool addTime)
+{
+	if (addTime)
+	{
+		logArray[logPointer] = timeClient.getFormattedTime() + " | " + str;
+	}
+	else
+	{
+		logArray[logPointer] = str;
+	}
 	logPointer = (logPointer + 1) % 200;
 	Serial.print(str);
 }
@@ -484,8 +496,10 @@ String logArrayToString()
 	String logStr = "";
 	for (int i = 0; i < LOG_SIZE; i++)
 	{
-		logStr += logArray[(logPointer + i) % LOG_SIZE];
+		if (logArray[(logPointer + i) % LOG_SIZE] != null)
+		{
+			logStr += logArray[(logPointer + i) % LOG_SIZE];
+		}
 	}
-	logStr.trim();
 	return logStr;
 }
