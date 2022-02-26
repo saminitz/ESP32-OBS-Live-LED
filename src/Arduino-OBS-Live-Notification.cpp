@@ -179,7 +179,7 @@ void setup()
 		{
 			if (!index)
 			{
-				Serial.printf("Update Start: %s\n", filename.c_str());
+				logPrintf("Update Start: %s\n", filename.c_str());
 				if (!Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000))
 				{
 					Update.printError(Serial);
@@ -196,7 +196,7 @@ void setup()
 			{
 				if (Update.end(true))
 				{
-					Serial.printf("Update Success: %uB\n", index + len);
+					logPrintf("Update Success: %uB\r\n", index + len);
 				}
 				else
 				{
