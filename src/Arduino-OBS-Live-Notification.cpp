@@ -32,6 +32,8 @@ WiFiClient client;
 WebSocketsClient webSocket;
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
+// Create event source (Server-Sent events)
+AsyncEventSource events("/events");
 // Create a Json object to save all settings in RAM
 JSONVar allSettings;
 
@@ -41,7 +43,7 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, 60000);
 Adafruit_NeoPixel pixels(NUM_LEDS, PIN_LED, NEO_GRB + NEO_KHZ800);
 
 // flag to use from web update to reboot the ESP
-bool shouldReboot = true;
+bool shouldReboot = false;
 
 bool sendInitialRequest = true;
 bool ledTimeSwitch = false;
@@ -103,6 +105,9 @@ void setup()
 	loadAllSettings();
 
 	timeClient.begin();
+
+	// attach AsyncEventSource
+	server.addHandler(&events);
 
 	// Route for root / web page
 	server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -225,6 +230,16 @@ unsigned long previousMillisOffTime = 0;
 unsigned long interval = 20000;
 void loop()
 {
+	if (shouldReboot)
+	{
+		logPrintln("Rebooting...");
+		delay(100);
+		ESP.restart();
+	}
+	static char temp[128];
+	sprintf(temp, "Seconds since boot: %lu", millis() / 1000);
+	events.send(temp, "time"); // send event "time"
+
 	webSocket.loop();
 
 	unsigned long currentMillis = millis();
