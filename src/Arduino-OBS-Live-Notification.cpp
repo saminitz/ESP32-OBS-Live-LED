@@ -172,6 +172,9 @@ void setup()
 	// Route to OTA (Over-the-air-Update)
 	server.on("/ota", HTTP_GET, [](AsyncWebServerRequest *request)
 			  { request->send(SPIFFS, "/ota.html", String(), false); });
+	// Route to Reboot ESP
+	server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest *request)
+			  { request->send(200, "text/plain", "Rebooting now..."); shouldReboot = true; });
 
 	server.on(
 		"/update", HTTP_POST, [](AsyncWebServerRequest *request)
