@@ -12,6 +12,7 @@
 #include <WiFiUdp.h>
 #include <NTPClient.h>
 #include <Arduino_JSON.h>
+#include <AsyncElegantOTA.h>
 #include <WebSocketsClient.h>
 #include <Adafruit_NeoPixel.h>
 #include <ESPAsyncWebServer.h>
@@ -32,8 +33,6 @@ WiFiClient client;
 WebSocketsClient webSocket;
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
-// Create event source (Server-Sent events)
-AsyncEventSource events("/events");
 // Create a Json object to save all settings in RAM
 JSONVar allSettings;
 
@@ -106,9 +105,6 @@ void setup()
 
 	timeClient.begin();
 
-	// attach AsyncEventSource
-	server.addHandler(&events);
-
 	// Route for root / web page
 	server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
 			  { request->send(SPIFFS, "/index.html", String(), false); });
@@ -168,50 +164,13 @@ void setup()
 
 	// Route to load the logs
 	server.on("/log", HTTP_GET, [](AsyncWebServerRequest *request)
-			  { request->send(200, "text/plain", logArrayToString()); });
-	// Route to OTA (Over-the-air-Update)
-	server.on("/ota", HTTP_GET, [](AsyncWebServerRequest *request)
-			  { request->send(SPIFFS, "/ota.html", String(), false); });
+			  { request->send(200, "text/plain", logArrayToString()); logPrintln("Rebooting..."); delay(100); ESP.restart(); });
 	// Route to Reboot ESP
 	server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest *request)
 			  { request->send(200, "text/plain", "Rebooting now..."); shouldReboot = true; });
 
-	server.on(
-		"/update", HTTP_POST, [](AsyncWebServerRequest *request)
-		{
-    shouldReboot = !Update.hasError();
-    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", shouldReboot ? "OK" : "FAIL");
-    response->addHeader("Connection", "close");
-    request->send(response); },
-		[](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
-		{
-			if (!index)
-			{
-				logPrintf("Update Start: %s\n", filename.c_str());
-				if (!Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000))
-				{
-					Update.printError(Serial);
-				}
-			}
-			if (!Update.hasError())
-			{
-				if (Update.write(data, len) != len)
-				{
-					Update.printError(Serial);
-				}
-			}
-			if (final)
-			{
-				if (Update.end(true))
-				{
-					logPrintf("Update Success: %uB\r\n", index + len);
-				}
-				else
-				{
-					Update.printError(Serial);
-				}
-			}
-		});
+	// Start ElegantOTAs
+	AsyncElegantOTA.begin(&server);
 
 	// Start server
 	server.begin();
@@ -233,16 +192,6 @@ unsigned long previousMillisOffTime = 0;
 unsigned long interval = 20000;
 void loop()
 {
-	if (shouldReboot)
-	{
-		logPrintln("Rebooting...");
-		delay(100);
-		ESP.restart();
-	}
-	static char temp[128];
-	sprintf(temp, "Seconds since boot: %lu", millis() / 1000);
-	events.send(temp, "time"); // send event "time"
-
 	webSocket.loop();
 
 	unsigned long currentMillis = millis();
