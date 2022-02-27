@@ -25,7 +25,7 @@
 #define WEBSOCKET_IP_ADDRESS "192.168.1.38"
 #define WEBSOCKET_PORT 4446
 
-#define LOG_SIZE 1024
+#define LOG_SIZE 256
 
 // Create a WiFiClient
 WiFiClient client;
