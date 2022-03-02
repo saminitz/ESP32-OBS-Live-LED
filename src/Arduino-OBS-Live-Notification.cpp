@@ -25,7 +25,7 @@
 #define WEBSOCKET_IP_ADDRESS "192.168.1.38"
 #define WEBSOCKET_PORT 4446
 
-#define LOG_SIZE 256
+#define LOG_SIZE 32768
 
 // Create a WiFiClient
 WiFiClient client;
@@ -41,15 +41,12 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, 60000);
 
 Adafruit_NeoPixel pixels(NUM_LEDS, PIN_LED, NEO_GRB + NEO_KHZ800);
 
-// flag to use from web update to reboot the ESP
-bool shouldReboot = false;
-
 bool sendInitialRequest = true;
 bool ledTimeSwitch = false;
 bool currentlyStreaming = false;
 bool currentlyRecording = false;
 String obsUuidResponse;
-String logArray[LOG_SIZE];
+char logArray[LOG_SIZE];
 int logPointer = 0;
 
 // Function declaration
@@ -164,10 +161,13 @@ void setup()
 
 	// Route to load the logs
 	server.on("/log", HTTP_GET, [](AsyncWebServerRequest *request)
-			  { request->send(200, "text/plain", logArrayToString()); logPrintln("Rebooting..."); delay(100); ESP.restart(); });
+			  { request->send(200, "text/plain", logArrayToString()); });
+	// Route to get the free Heap
+	server.on("/stats", HTTP_GET, [](AsyncWebServerRequest *request)
+			  { request->send(200, "text/plain", "Free Heap" + String(ESP.getFreeHeap())); });
 	// Route to Reboot ESP
 	server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest *request)
-			  { request->send(200, "text/plain", "Rebooting now..."); shouldReboot = true; });
+			  { request->send(200, "text/plain", "Rebooting now...");  logPrintln("Rebooting..."); delay(100); ESP.restart(); });
 
 	// Start ElegantOTAs
 	AsyncElegantOTA.begin(&server);
@@ -181,22 +181,22 @@ void setup()
 	// Event handler
 	webSocket.onEvent(webSocketEvent);
 
-	// Try ever 5000 again if connection has failed
-	webSocket.setReconnectInterval(10000);
+	// Try again after ... time if connection has failed
+	webSocket.setReconnectInterval(60000);
 
 	ledUpdate();
 }
 
 unsigned long previousMillisWiFi = 0;
 unsigned long previousMillisOffTime = 0;
-unsigned long interval = 20000;
+unsigned long interval = 60000;
 void loop()
 {
 	webSocket.loop();
 
 	unsigned long currentMillis = millis();
 	// if WiFi is down, try reconnecting
-	if ((WiFi.status() != WL_CONNECTED) && (currentMillis - previousMillisWiFi >= interval))
+	if ((currentMillis - previousMillisWiFi >= interval) && (WiFi.status() != WL_CONNECTED))
 	{
 		logPrintln("[WiFi] Reconnecting to WiFi...");
 		WiFi.disconnect();
@@ -342,12 +342,12 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 		break;
 
 	case WStype_CONNECTED:
-		logPrintf("[WebSocket] Connected to URL: %s\r\n", (const char *)payload);
+		logPrintf("[WebSocket] Connected to URL: %s\n", (const char *)payload);
 		break;
 
 	case WStype_TEXT:
 	{
-		// logPrintf("[WebSocket] Got text: %s\r\n", payload);
+		// logPrintf("[WebSocket] Got text: %s\n", payload);
 		JSONVar json = JSON.parse((char *)payload);
 		logPrintln((const char *)payload);
 
@@ -456,7 +456,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 	}
 
 	case WStype_ERROR:
-		logPrintf("[WebSocket] Error: %s\r\n", (const char *)payload);
+		logPrintf("[WebSocket] Error: %s\n", (const char *)payload);
 		break;
 
 	default:
@@ -480,37 +480,45 @@ void logPrint(String str, bool addTime)
 
 void logPrintln()
 {
-	logStringAndSerialPrint("\r\n", false);
+	logStringAndSerialPrint("\n", false);
 }
 
 void logPrintln(String str, bool addTime)
 {
-	logStringAndSerialPrint(str + "\r\n", addTime);
+	logStringAndSerialPrint(str + "\n", addTime);
 }
 
 void logStringAndSerialPrint(String str, bool addTime)
 {
+	String tempString;
 	if (addTime)
 	{
-		logArray[logPointer] = timeClient.getFormattedTime() + " | " + str;
+		tempString = timeClient.getFormattedTime() + " | " + str;
 	}
 	else
 	{
-		logArray[logPointer] = str;
+		tempString = str;
 	}
-	logPointer = (logPointer + 1) % 200;
-	Serial.print(str);
+
+	for (size_t i = 0; i < tempString.length(); i++)
+	{
+		logArray[logPointer] = tempString[i];
+		logPointer = (logPointer + 1) % LOG_SIZE;
+	}
+
+	Serial.print(tempString);
 }
 
 String logArrayToString()
 {
-	String logStr = "";
-	for (int i = 0; i < LOG_SIZE; i++)
+	String logStr = "Begin Free Heap: " + String(ESP.getFreeHeap()) + "\n";
+	for (size_t i = 0; i < LOG_SIZE; i++)
 	{
-		if (logArray[(logPointer + i) % LOG_SIZE] != null)
+		if (logArray[(logPointer + i) % LOG_SIZE] != 0)
 		{
 			logStr += logArray[(logPointer + i) % LOG_SIZE];
 		}
 	}
+	logStr += "End Free Heap: " + String(ESP.getFreeHeap()) + "\n";
 	return logStr;
 }
