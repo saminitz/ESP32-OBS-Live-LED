@@ -4,7 +4,7 @@ All settings are controlled via a web interface. The website has a Twitch theme.
 
 ### Implemented Features ✓
 - Control connected LEDs according to the OBS status
-- Web Interface 
+- Web Interface (German)
   - Save and load settings from ESP32 storage
   - Regulation of streaming and recording color
   - Regulation of the brightness
@@ -13,6 +13,6 @@ All settings are controlled via a web interface. The website has a Twitch theme.
   - Manual color
   - Access log via "/log"
 
-### Coming Features
-- Web Interface (Twitch specific & German)
+### Coming Features 🕑
+- Web Interface
   - Time schedule for manual control
