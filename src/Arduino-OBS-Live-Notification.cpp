@@ -69,15 +69,17 @@ void logStringAndSerialPrint(String str, bool addTime = true);
 String logArrayToString();
 
 // Function definition
-void setup() {
-    pixels.begin();  // INITIALIZE NeoPixel strip object (REQUIRED)
+void setup()
+{
+    pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
 
     // Start Serial Connection
     Serial.begin(115200);
     delay(1000);
 
     // Initialize SPIFFS
-    if (!SPIFFS.begin(true)) {
+    if (!SPIFFS.begin(true))
+    {
         logPrintln("An Error has occurred while mounting SPIFFS");
         return;
     }
@@ -90,7 +92,8 @@ void setup() {
 
     WiFi.setHostname("Twitch-LED-Schild");
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    while (WiFi.status() != WL_CONNECTED) {
+    while (WiFi.status() != WL_CONNECTED)
+    {
         delay(500);
         logPrint(".", false);
     }
@@ -105,8 +108,10 @@ void setup() {
     timeClient.begin();
 
     // Route for root / web page
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(SPIFFS, "/index.html", String(), false); });
-    server.on("/getSettings", HTTP_GET, [](AsyncWebServerRequest *request) {
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(SPIFFS, "/index.html", String(), false); });
+    server.on("/getSettings", HTTP_GET, [](AsyncWebServerRequest *request)
+              {
 		logPrintln("[WebsiteUI] Request");
 		AsyncResponseStream* response = request->beginResponseStream("application/json");
 		File file = SPIFFS.open("/settings.json", "r");
@@ -115,11 +120,13 @@ void setup() {
 		request->send(response); });
     server.on(
         "/postSettings", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL,
-        [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total)
+        {
             // The following print statements work + removing them makes no difference
             // This is displayed on monitor "Content type::application/x-www-form-urlencoded"
             String postContent = "";
-            for (size_t i = 0; i < len; i++) {
+            for (size_t i = 0; i < len; i++)
+            {
                 postContent += (char)data[i];
             }
             logPrint("[WebsiteUI] Einstellungen werden gespeichert: ");
@@ -135,27 +142,37 @@ void setup() {
         });
 
     // Route to load style CSS file
-    server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(SPIFFS, "/style.css", "text/css"); });
+    server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(SPIFFS, "/style.css", "text/css"); });
     // Route to load Twtich-Settings SVG file
-    server.on("/Twtich-Settings.svg", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(SPIFFS, "/Twtich-Settings.svg", "image/svg+xml"); });
+    server.on("/Twtich-Settings.svg", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(SPIFFS, "/Twtich-Settings.svg", "image/svg+xml"); });
     // Route to load Twitch-Logo SVG file
-    server.on("/Twtich-Logo.svg", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(SPIFFS, "/Twtich-Logo.svg", "image/svg+xml"); });
+    server.on("/Twtich-Logo.svg", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(SPIFFS, "/Twtich-Logo.svg", "image/svg+xml"); });
     // Route to load coloris CSS file
-    server.on("/coloris.css", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(SPIFFS, "/coloris.css", "text/css"); });
+    server.on("/coloris.css", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(SPIFFS, "/coloris.css", "text/css"); });
 
     // Route to load timepicker javascript
-    server.on("/timepicker-ui.js", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(SPIFFS, "/timepicker-ui.js", "text/javascript"); });
+    server.on("/timepicker-ui.js", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(SPIFFS, "/timepicker-ui.js", "text/javascript"); });
     // Route to load coloris javascript
-    server.on("/coloris.js", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(SPIFFS, "/coloris.js", "text/javascript"); });
+    server.on("/coloris.js", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(SPIFFS, "/coloris.js", "text/javascript"); });
     // Route to load index javascript file
-    server.on("/index.js", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(SPIFFS, "/index.js", "text/javascript"); });
+    server.on("/index.js", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(SPIFFS, "/index.js", "text/javascript"); });
 
     // Route to load the logs
-    server.on("/log", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(200, "text/plain", logArrayToString()); });
+    server.on("/log", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(200, "text/plain", logArrayToString()); });
     // Route to get the free Heap
-    server.on("/stats", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(200, "text/plain", "Free Heap" + String(ESP.getFreeHeap())); });
+    server.on("/stats", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(200, "text/plain", "Free Heap" + String(ESP.getFreeHeap())); });
     // Route to Reboot ESP
-    server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest *request) { request->send(200, "text/plain", "Rebooting now...");  logPrintln("Rebooting..."); delay(100); ESP.restart(); });
+    server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(200, "text/plain", "Rebooting now...");  logPrintln("Rebooting..."); delay(100); ESP.restart(); });
 
     // Start ElegantOTAs
     AsyncElegantOTA.begin(&server);
@@ -178,23 +195,28 @@ void setup() {
 unsigned long previousMillisWiFi = 0;
 unsigned long previousMillisOffTime = 0;
 unsigned long interval = 60000;
-void loop() {
+void loop()
+{
     webSocket.loop();
 
     unsigned long currentMillis = millis();
     // if WiFi is down, try reconnecting
-    if ((currentMillis - previousMillisWiFi >= interval) && (WiFi.status() != WL_CONNECTED)) {
+    if ((currentMillis - previousMillisWiFi >= interval) && (WiFi.status() != WL_CONNECTED))
+    {
         logPrintln("[WiFi] Reconnecting to WiFi...");
         WiFi.disconnect();
         WiFi.reconnect();
         previousMillisWiFi = currentMillis;
-    } else if (webSocket.isConnected() && sendInitialRequest) {
+    }
+    else if (webSocket.isConnected() && sendInitialRequest)
+    {
         sendInitialRequest = false;
         logPrintln("[WebSocket] Sending Request");
         webSocket.sendTXT("{\"op\":1,\"d\":{\"rpcVersion\":1,\"eventSubscriptions\":64}}");
     }
 
-    if (currentMillis - previousMillisOffTime >= interval) {
+    if (currentMillis - previousMillisOffTime >= interval)
+    {
         checkShutOffTime();
         previousMillisOffTime = currentMillis;
     }
@@ -203,40 +225,52 @@ void loop() {
 }
 
 bool tempLedTimeSwitch = false;
-void checkShutOffTime() {
+void checkShutOffTime()
+{
     int shutOffTime = (int)allSettings["shutOffTime"]["hour"] * 100 + (int)allSettings["shutOffTime"]["minute"];
 
-    if ((bool)allSettings["useShutOffTime"] && isRealtimeBetween(shutOffTime, 600)) {
+    if ((bool)allSettings["useShutOffTime"] && isRealtimeBetween(shutOffTime, 600))
+    {
         ledTimeSwitch = true;
-    } else {
+    }
+    else
+    {
         ledTimeSwitch = false;
     }
 
     // To prevent too many updates on the LEDs
-    if (ledTimeSwitch != tempLedTimeSwitch) {
+    if (ledTimeSwitch != tempLedTimeSwitch)
+    {
         logPrintln("[Shutoff Time] Updating LED from Time");
         tempLedTimeSwitch = ledTimeSwitch;
         ledUpdate();
     }
 }
 
-bool isRealtimeBetween(int start, int end) {
+bool isRealtimeBetween(int start, int end)
+{
     timeClient.update();
     int realtime = timeClient.getHours() * 100 + timeClient.getMinutes();
 
-    if ((realtime >= start && realtime < end) || (start > end && (realtime >= start || realtime < end))) {
+    if ((realtime >= start && realtime < end) || (start > end && (realtime >= start || realtime < end)))
+    {
         return true;
-    } else {
+    }
+    else
+    {
         return false;
     }
 }
 
-uint32_t hexToUInt32(String hexColor) {
-    if (hexColor[0] == '#') {
+uint32_t hexToUInt32(String hexColor)
+{
+    if (hexColor[0] == '#')
+    {
         hexColor = hexColor.substring(1);
     }
 
-    while (hexColor.length() != 6) {
+    while (hexColor.length() != 6)
+    {
         hexColor += "0";
     }
 
@@ -246,7 +280,8 @@ uint32_t hexToUInt32(String hexColor) {
     return pixels.Color(r, g, b);
 }
 
-void loadAllSettings() {
+void loadAllSettings()
+{
     File file = SPIFFS.open("/settings.json", "r");
     String json = file.readString();
     logPrintln("[Settings] " + json);
@@ -254,116 +289,151 @@ void loadAllSettings() {
     ledSetBrightness();
 }
 
-void ledUpdate() {
-    if (!(bool)allSettings["manualControl"] && ledTimeSwitch) {
+void ledUpdate()
+{
+    if (!(bool)allSettings["manualControl"] && ledTimeSwitch)
+    {
         pixels.clear();
         pixels.show();
         return;
     }
 
-    if ((bool)allSettings["manualControl"]) {
+    if ((bool)allSettings["manualControl"])
+    {
         ledLoop((const char *)allSettings["manualColor"]);
-    } else if (currentlyStreaming) {
+    }
+    else if (currentlyStreaming)
+    {
         ledLoop((const char *)allSettings["streamingColor"]);
-    } else if (currentlyRecording) {
+    }
+    else if (currentlyRecording)
+    {
         ledLoop((const char *)allSettings["recordingColor"]);
-    } else {
+    }
+    else
+    {
         pixels.clear();
         pixels.show();
     }
 }
 
-void ledLoop(const char *color) {
-    for (size_t i = 0; i < NUM_LEDS; i++) {
+void ledLoop(const char *color)
+{
+    for (size_t i = 0; i < NUM_LEDS; i++)
+    {
         pixels.setPixelColor(i, hexToUInt32(color));
     }
     pixels.show();
 }
 
-void ledSetBrightness() {
+void ledSetBrightness()
+{
     pixels.setBrightness((int)allSettings["brightnessIndex"]);
     pixels.show();
 }
 
-void updateStreamingStatus(bool isStreaming) {
-    if (isStreaming) {
+void updateStreamingStatus(bool isStreaming)
+{
+    if (isStreaming)
+    {
         logPrintln("[WebSocket] Status: Recording!");
-    } else {
+    }
+    else
+    {
         logPrintln("[WebSocket] Status: Stoped Recording!");
     }
     currentlyStreaming = isStreaming;
     ledUpdate();
 }
 
-void updateRecordingStatus(bool isRecording) {
-    if (isRecording) {
+void updateRecordingStatus(bool isRecording)
+{
+    if (isRecording)
+    {
         logPrintln("[WebSocket] Status: Streaming!");
-    } else {
+    }
+    else
+    {
         logPrintln("[WebSocket] Status: Stoped Streaming!");
     }
     currentlyRecording = isRecording;
     ledUpdate();
 }
 
-void webSocketEvent(WStype_t type, uint8_t *payload, size_t length) {
-    switch (type) {
-        case WStype_DISCONNECTED:
-            logPrintln("[WebSocket] Disconnected!");
-            sendInitialRequest = true;
-            currentlyStreaming = false;
-            currentlyRecording = false;
-            ledUpdate();
-            break;
+void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
+{
+    switch (type)
+    {
+    case WStype_DISCONNECTED:
+        logPrintln("[WebSocket] Disconnected!");
+        sendInitialRequest = true;
+        currentlyStreaming = false;
+        currentlyRecording = false;
+        ledUpdate();
+        break;
 
-        case WStype_CONNECTED:
-            logPrintf("[WebSocket] Connected to URL: %s\n", (const char *)payload);
-            break;
+    case WStype_CONNECTED:
+        logPrintf("[WebSocket] Connected to URL: %s\n", (const char *)payload);
+        break;
 
-        case WStype_TEXT: {
-            // logPrintf("[WebSocket] Got text: %s\n", payload);
-            JSONVar json = JSON.parse((char *)payload);
-            logPrintln((const char *)payload);
+    case WStype_TEXT:
+    {
+        // logPrintf("[WebSocket] Got text: %s\n", payload);
+        JSONVar json = JSON.parse((char *)payload);
+        logPrintln((const char *)payload);
 
-            if (!json.hasOwnProperty("op")) {
-                return;
+        if (!json.hasOwnProperty("op"))
+        {
+            return;
+        }
+        if (json["op"] == (JSONVar)2)
+        {
+            String uuid = StringUUIDGen();
+            obsUuidResponse = uuid;
+            webSocket.sendTXT("{\"op\":6,\"d\":{\"requestType\":\"GetOutputList\",\"requestId\":\"" + uuid + "\"}}");
+        }
+        else if (json["op"] == (JSONVar)5 && json["d"]["eventIntent"] == (JSONVar)64)
+        {
+            if (strcmp(json["d"]["eventType"], "StreamStateChanged"))
+            {
+                updateStreamingStatus(json["d"]["eventData"]["outputActive"]);
+                ledUpdate();
             }
-            if (json["op"] == (JSONVar)2) {
-                String uuid = StringUUIDGen();
-                obsUuidResponse = uuid;
-                webSocket.sendTXT("{\"op\":6,\"d\":{\"requestType\":\"GetOutputList\",\"requestId\":\"" + uuid + "\"}}");
-            } else if (json["op"] == (JSONVar)5 && json["d"]["eventIntent"] == (JSONVar)64) {
-                if (strcmp(json["d"]["eventType"], "StreamStateChanged")) {
-                    updateStreamingStatus(json["d"]["eventData"]["outputActive"]);
-                    ledUpdate();
-                } else if (strcmp(json["d"]["eventType"], "RecordStateChanged")) {
-                    updateRecordingStatus(json["d"]["eventData"]["outputActive"]);
-                    ledUpdate();
-                }
-            } else if (json["op"] == (JSONVar)7 && json["d"]["requestId"] == obsUuidResponse && json["d"]["requestStatus"]["code"] == (JSONVar)100) {
-                for (int i = 0; i < json["d"]["responseData"]["outputs"].length(); i++)
-                {
-                    if (strcmp(json["d"]["responseData"]["outputs"][i]["outputActive"]["outputName"], "adv_stream")) {
-                        updateStreamingStatus(json["d"]["responseData"]["outputs"][i]["outputActive"]);
-                        ledUpdate();
-                    } else if (strcmp(json["d"]["responseData"]["outputs"][i]["outputActive"]["outputName"], "adv_file_output")) {
-                        updateRecordingStatus(json["d"]["responseData"]["outputs"][i]["outputActive"]);
-                        ledUpdate();
-                    }
-                }
-                
+            else if (strcmp(json["d"]["eventType"], "RecordStateChanged"))
+            {
+                updateRecordingStatus(json["d"]["eventData"]["outputActive"]);
+                ledUpdate();
             }
         }
+        else if (json["op"] == (JSONVar)7 && json["d"]["requestId"] == obsUuidResponse && json["d"]["requestStatus"]["code"] == (JSONVar)100)
+        {
+            for (int i = 0; i < json["d"]["responseData"]["outputs"].length(); i++)
+            {
+                if (strcmp(json["d"]["responseData"]["outputs"][i]["outputActive"]["outputName"], "adv_stream"))
+                {
+                    updateStreamingStatus(json["d"]["responseData"]["outputs"][i]["outputActive"]);
+                    ledUpdate();
+                }
+                else if (strcmp(json["d"]["responseData"]["outputs"][i]["outputActive"]["outputName"], "adv_file_output"))
+                {
+                    updateRecordingStatus(json["d"]["responseData"]["outputs"][i]["outputActive"]);
+                    ledUpdate();
+                }
+            }
+        }
+    }
 
-        case WStype_ERROR:
-            logPrintf("[WebSocket] Error: %s\n", (const char *)payload);
-            break;
+    case WStype_ERROR:
+        logPrintf("[WebSocket] Error: %s\n", (const char *)payload);
+        break;
 
-        default:
-            break;
+    default:
+        break;
     }
 }
 
-void logPrintf(const char *format, ...) {
+void logPrintf(const char *format, ...)
+{
     char buff[128];
     va_list arg;
     va_start(arg, format);
@@ -371,27 +441,35 @@ void logPrintf(const char *format, ...) {
     logStringAndSerialPrint(buff);
 }
 
-void logPrint(String str, bool addTime) {
+void logPrint(String str, bool addTime)
+{
     logStringAndSerialPrint(str, addTime);
 }
 
-void logPrintln() {
+void logPrintln()
+{
     logStringAndSerialPrint("\n", false);
 }
 
-void logPrintln(String str, bool addTime) {
+void logPrintln(String str, bool addTime)
+{
     logStringAndSerialPrint(str + "\n", addTime);
 }
 
-void logStringAndSerialPrint(String str, bool addTime) {
+void logStringAndSerialPrint(String str, bool addTime)
+{
     String tempString;
-    if (addTime) {
+    if (addTime)
+    {
         tempString = timeClient.getFormattedTime() + " | " + str;
-    } else {
+    }
+    else
+    {
         tempString = str;
     }
 
-    for (size_t i = 0; i < tempString.length(); i++) {
+    for (size_t i = 0; i < tempString.length(); i++)
+    {
         logArray[logPointer] = tempString[i];
         logPointer = (logPointer + 1) % LOG_SIZE;
     }
@@ -399,10 +477,13 @@ void logStringAndSerialPrint(String str, bool addTime) {
     Serial.print(tempString);
 }
 
-String logArrayToString() {
+String logArrayToString()
+{
     String logStr = "Begin Free Heap: " + String(ESP.getFreeHeap()) + "\n";
-    for (size_t i = 0; i < LOG_SIZE; i++) {
-        if (logArray[(logPointer + i) % LOG_SIZE] != 0) {
+    for (size_t i = 0; i < LOG_SIZE; i++)
+    {
+        if (logArray[(logPointer + i) % LOG_SIZE] != 0)
+        {
             logStr += logArray[(logPointer + i) % LOG_SIZE];
         }
     }
