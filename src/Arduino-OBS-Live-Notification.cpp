@@ -84,7 +84,7 @@ void setup()
         return;
     }
 
-    logPrintln("Version Control: 1000");
+    logPrintln("Version Control:1010");
 
     // Start connecting to a WiFi network
     logPrint("[WiFi] Connecting to ");
@@ -180,14 +180,14 @@ void setup()
     // Start server
     server.begin();
 
-    // Server address, port and URL
-    webSocket.begin(WEBSOCKET_IP_ADDRESS, WEBSOCKET_PORT, "/");
-
     // Event handler
     webSocket.onEvent(webSocketEvent);
 
     // Try again after ... time if connection has failed
     webSocket.setReconnectInterval(60000);
+
+    // Server address, port and URL
+    webSocket.begin(WEBSOCKET_IP_ADDRESS, WEBSOCKET_PORT, "/");
 
     ledUpdate();
 }
@@ -198,6 +198,7 @@ unsigned long interval = 60000;
 void loop()
 {
     webSocket.loop();
+    timeClient.update();
 
     unsigned long currentMillis = millis();
     // if WiFi is down, try reconnecting
@@ -249,7 +250,6 @@ void checkShutOffTime()
 
 bool isRealtimeBetween(int start, int end)
 {
-    timeClient.update();
     int realtime = timeClient.getHours() * 100 + timeClient.getMinutes();
 
     if ((realtime >= start && realtime < end) || (start > end && (realtime >= start || realtime < end)))
@@ -336,11 +336,11 @@ void updateStreamingStatus(bool isStreaming)
 {
     if (isStreaming)
     {
-        logPrintln("[WebSocket] Status: Recording!");
+        logPrintln("[WebSocket] Status: Streaming!");
     }
     else
     {
-        logPrintln("[WebSocket] Status: Stoped Recording!");
+        logPrintln("[WebSocket] Status: Stoped Streaming!");
     }
     currentlyStreaming = isStreaming;
     ledUpdate();
@@ -350,11 +350,11 @@ void updateRecordingStatus(bool isRecording)
 {
     if (isRecording)
     {
-        logPrintln("[WebSocket] Status: Streaming!");
+        logPrintln("[WebSocket] Status: Recording!");
     }
     else
     {
-        logPrintln("[WebSocket] Status: Stoped Streaming!");
+        logPrintln("[WebSocket] Status: Stoped Recording!");
     }
     currentlyRecording = isRecording;
     ledUpdate();
@@ -373,14 +373,15 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
         break;
 
     case WStype_CONNECTED:
-        logPrintf("[WebSocket] Connected to URL: %s\n", (const char *)payload);
+        logPrint("[WebSocket] Connected to URL: ");
+        logPrintln((const char *)payload, false);
         break;
 
     case WStype_TEXT:
     {
-        // logPrintf("[WebSocket] Got text: %s\n", payload);
+        logPrint("[WebSocket] Got text: ");
+        logPrintln((const char *)payload, false);
         JSONVar json = JSON.parse((char *)payload);
-        logPrintln((const char *)payload);
 
         if (!json.hasOwnProperty("op"))
         {
@@ -394,37 +395,35 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
         }
         else if (json["op"] == (JSONVar)5 && json["d"]["eventIntent"] == (JSONVar)64)
         {
-            if (strcmp(json["d"]["eventType"], "StreamStateChanged"))
+            if ((JSONVar)json["d"]["eventType"] == (JSONVar) "StreamStateChanged")
             {
                 updateStreamingStatus(json["d"]["eventData"]["outputActive"]);
-                ledUpdate();
             }
-            else if (strcmp(json["d"]["eventType"], "RecordStateChanged"))
+            else if ((JSONVar)json["d"]["eventType"] == (JSONVar) "RecordStateChanged")
             {
                 updateRecordingStatus(json["d"]["eventData"]["outputActive"]);
-                ledUpdate();
             }
         }
         else if (json["op"] == (JSONVar)7 && json["d"]["requestId"] == obsUuidResponse && json["d"]["requestStatus"]["code"] == (JSONVar)100)
         {
             for (int i = 0; i < json["d"]["responseData"]["outputs"].length(); i++)
             {
-                if (strcmp(json["d"]["responseData"]["outputs"][i]["outputActive"]["outputName"], "adv_stream"))
+                if ((JSONVar)json["d"]["responseData"]["outputs"][i]["outputName"] == (JSONVar) "adv_stream")
                 {
                     updateStreamingStatus(json["d"]["responseData"]["outputs"][i]["outputActive"]);
-                    ledUpdate();
                 }
-                else if (strcmp(json["d"]["responseData"]["outputs"][i]["outputActive"]["outputName"], "adv_file_output"))
+                else if ((JSONVar)json["d"]["responseData"]["outputs"][i]["outputName"] == (JSONVar) "adv_file_output")
                 {
                     updateRecordingStatus(json["d"]["responseData"]["outputs"][i]["outputActive"]);
-                    ledUpdate();
                 }
             }
         }
+        break;
     }
 
     case WStype_ERROR:
-        logPrintf("[WebSocket] Error: %s\n", (const char *)payload);
+        logPrint("[WebSocket] Error: ");
+        logPrintln((const char *)payload, false);
         break;
 
     default:
@@ -434,7 +433,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 
 void logPrintf(const char *format, ...)
 {
-    char buff[128];
+    char buff[2048];
     va_list arg;
     va_start(arg, format);
     sprintf(buff, format, arg);
